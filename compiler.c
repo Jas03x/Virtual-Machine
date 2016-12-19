@@ -188,8 +188,8 @@ int main(int argc, char* argv[])
     // start by writing the code offset:
     i = findReference("_CODE_");
     if(i == -1) i = 0;
-    else i = REFERENCES[i].offset + 1;
-    const int code_start = i;
+    else i = REFERENCES[i].offset;
+    const int code_start = i + 1; // +1 since the first byte states where the program begins
 
     printf("%i\n", code_start);
     fwrite(&code_start, sizeof(int), 1, output);
@@ -246,7 +246,7 @@ int main(int argc, char* argv[])
                                             printf("Invalid integer or label value [%s] on line %i.\n", buffer, line);
                                             return -1;
                                         }
-                                        i = REFERENCES[i].offset;
+                                        i = REFERENCES[i].offset + 1;
                                     } else {
                                         len = strlen(buffer);
                                         for(i = 0; i < len; i++) {

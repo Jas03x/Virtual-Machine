@@ -63,6 +63,8 @@ int main()
         int OP = RAM[PC++];
         int v0, v1;
 
+        //printf("%i: ", OP);
+
         //printf("Reading OPCODE %i\n", OP);
         switch(OP)
         {
@@ -80,7 +82,7 @@ int main()
                         break;
 
                     case PRINT_CHAR:
-                        printf("Try to print %i\n", REGISTERS[EBX]);
+                        //printf("Try to print %i\n", REGISTERS[EBX]);
                         printf("%c", (char) REGISTERS[EBX]);
                         break;
                 }
@@ -157,10 +159,11 @@ int main()
                 v1 = RAM[PC++];
 
                 FLAGS = 0; // clear the flags
+                //printf("CMP %i %i -> %i vs %i\n", v0, v1, REGISTERS[v0], REGISTERS[v1]);
+
                 if(REGISTERS[v0] == REGISTERS[v1]) FLAGS |= EQ_FLAG;
-                if(REGISTERS[v0] > REGISTERS[v1]) FLAGS |= GT_FLAG;
-                else if(REGISTERS[v0] > REGISTERS[v1]) FLAGS |= LS_FLAG;
-                //printf("CMP %i %i\n", v0, v1);
+                else if(REGISTERS[v0] < REGISTERS[v1]) FLAGS |= LS_FLAG;
+                else if(REGISTERS[v0] > REGISTERS[v1]) FLAGS |= GT_FLAG;
                 break;
 
             case PUSH:
@@ -179,7 +182,7 @@ int main()
                 v0 = RAM[PC++];
                 v1 = RAM[PC++];
                 REGISTERS[v0] = RAM[REGISTERS[v1]];
-                //printf("GET %i %i\n", v0, v1);
+                //printf("GET %i %i -> get %i\n", v0, v1, RAM[REGISTERS[v1]]);
                 break;
 
             case SET:
@@ -192,6 +195,9 @@ int main()
             defualt:
                 break;
         }
+
+        // dump information:
+        //scanf("%*c");
     }
 
     puts("Successful termination");

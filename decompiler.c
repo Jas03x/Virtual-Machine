@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
     printf("{");
     if(code_start > 0) fprintf(output, "{");
 
-    for(; i < code_start; i++) {
+    for(; i < code_start - 1; i++) {
         fread(&e, sizeof(int), 1, input);
         printf("%c", (char) e);
         fprintf(output, "%c", (char) e);
