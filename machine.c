@@ -5,6 +5,15 @@
 
 #include "system.h"
 
+// debug statement:
+//#define DEBUG_MODE
+
+#ifdef DEBUG_MODE
+    #define dprintf(format, ...) printf((format), __VA_ARGS__);
+#else
+    #define dprintf(...)
+#endif
+
 static int* RAM;
 
 // User use registers:
@@ -15,7 +24,7 @@ static int PC = 0; // program counter; the address of the next instruction
 static int SP = 0; // stack pointer; the pointer to the top of the stack
 // WE WILL NEED SOME STATUS REGISTER OR SOMETHING TOO
 
-static uint8_t FLAGS; // 8 bit flag
+static uint8_t FLAGS; // 8 bit flag register
 
 int readROM()
 {
@@ -54,7 +63,7 @@ int main()
     puts("VM STARTING.");
 
     PC = RAM[0];
-    //printf("Execution starting at %i\n", PC);
+    dprintf("Execution starting at %i\n", PC);
     SP = 0;
     int RUNNING = 1;
     while(RUNNING)
@@ -63,14 +72,13 @@ int main()
         int OP = RAM[PC++];
         int v0, v1;
 
-        //printf("%i: ", OP);
+        dprintf("%i: ", OP);
 
-        //printf("Reading OPCODE %i\n", OP);
         switch(OP)
         {
             case INT:
                 v0 = RAM[PC++];
-                //printf("INT %i\n", v0);
+                dprintf("INT %i\n", v0);
                 switch(v0)
                 {
                     case EXIT:
@@ -91,67 +99,67 @@ int main()
             case MOV:
                 v0 = RAM[PC++];
                 v1 = RAM[PC++];
-                //printf("MOV %i %i\n", v0, v1);
+                dprintf("MOV %i %i\n", v0, v1);
                 REGISTERS[v0] = v1;
                 break;
 
             case CPY:
                 v0 = RAM[PC++];
                 v1 = RAM[PC++];
-                //printf("CPY %i %i\n", v0, v1);
+                dprintf("CPY %i %i\n", v0, v1);
                 REGISTERS[v0] = REGISTERS[v1];
                 break;
 
             case INC:
                 v0 = RAM[PC++];
                 v1 = RAM[PC++];
-                //printf("INC %i %i\n", v0, v1);
+                dprintf("INC %i %i\n", v0, v1);
                 REGISTERS[v0] += v1;
                 break;
 
             case DEC:
                 v0 = RAM[PC++];
                 v1 = RAM[PC++];
-                //printf("DEC %i %i\n", v0, v1);
+                dprintf("DEC %i %i\n", v0, v1);
                 REGISTERS[v0] -= v1;
                 break;
 
             case ADD:
                 v0 = RAM[PC++];
                 v1 = RAM[PC++];
-                //printf("ADD %i %i\n", v0, v1);
+                dprintf("ADD %i %i\n", v0, v1);
                 REGISTERS[v0] += REGISTERS[v1];
                 break;
 
             case SUB:
                 v0 = RAM[PC++];
                 v1 = RAM[PC++];
-                //printf("SUB %i %i\n", v0, v1);
+                dprintf("SUB %i %i\n", v0, v1);
                 REGISTERS[v0] -= REGISTERS[v1];
                 break;
 
             case JMP:
                 v0 = RAM[PC++];
                 PC = v0;
-                //printf("JMP %i\n", v0);
+                dprintf("JMP %i\n", v0);
                 break;
 
             case JEQ:
                 v0 = RAM[PC++];
                 if(FLAGS & EQ_FLAG) PC = v0;
-                //printf("JEQ %i\n", v0);
+                dprintf("JEQ %i\n", v0);
                 break;
 
             case JGE:
                 v0 = RAM[PC++];
                 if(FLAGS & GT_FLAG) PC = v0;
-                //printf("JGE %i\n", v0);
+                dprintf("JGE %i\n", v0);
                 break;
 
             case JLE:
                 v0 = RAM[PC++];
                 if(FLAGS & LS_FLAG) PC = v0;
-                //printf("JLE %i\n", v0);
+                dprintf("JLE %i\n", v0);
                 break;
 
             case CMP:
@@ -159,7 +167,7 @@ int main()
                 v1 = RAM[PC++];
 
                 FLAGS = 0; // clear the flags
-                //printf("CMP %i %i -> %i vs %i\n", v0, v1, REGISTERS[v0], REGISTERS[v1]);
+                dprintf("CMP %i %i -> %i vs %i\n", v0, v1, REGISTERS[v0], REGISTERS[v1]);
 
                 if(REGISTERS[v0] == REGISTERS[v1]) FLAGS |= EQ_FLAG;
                 else if(REGISTERS[v0] < REGISTERS[v1]) FLAGS |= LS_FLAG;
@@ -169,27 +177,27 @@ int main()
             case PUSH:
                 v0 = RAM[PC++];
                 RAM[SP++] = REGISTERS[v0];
-                //printf("PUSH %i\n", v0);
+                dprintf("PUSH %i\n", v0);
                 break;
 
             case POP:
                 v0 = RAM[PC++];
                 REGISTERS[v0] = RAM[SP--];
-                //printf("POP %i\n", v0);
+                dprintf("POP %i\n", v0);
                 break;
 
             case GET:
                 v0 = RAM[PC++];
                 v1 = RAM[PC++];
                 REGISTERS[v0] = RAM[REGISTERS[v1]];
-                //printf("GET %i %i -> get %i\n", v0, v1, RAM[REGISTERS[v1]]);
+                dprintf("GET %i %i -> get %i\n", v0, v1, RAM[REGISTERS[v1]]);
                 break;
 
             case SET:
                 v0 = RAM[PC++];
                 v1 = RAM[PC++];
                 RAM[REGISTERS[v0]] = REGISTERS[v1];
-                //printf("SET %i %i\n", v0, v1);
+                dprintf("SET %i %i\n", v0, v1);
                 break;
 
             defualt:

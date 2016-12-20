@@ -36,8 +36,16 @@ int main(int argc, char* argv[])
 
     for(; i < code_start - 1; i++) {
         fread(&e, sizeof(int), 1, input);
-        printf("%c", (char) e);
-        fprintf(output, "%c", (char) e);
+        if((char) e == '\n')
+        {
+            printf("\\n");
+            fprintf(output, "\\n");
+        }
+        else
+        {
+            printf("%c", (char) e);
+            fprintf(output, "%c", (char) e);
+        }
     }
 
     printf("}");
@@ -144,7 +152,7 @@ int main(int argc, char* argv[])
                         break;
                 }
                 break;
-
+            
             case 1: // expecting integer
                 printf("%i\n", i);
                 fprintf(output, "%i\n", i);

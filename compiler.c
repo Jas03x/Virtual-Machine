@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
                         break;
                     case ':':
                         buffer[index] = '\0'; // finalize the string for the reference name
-                        addReference(buffer, offset);
+                        addReference(buffer, offset + 1); // + 1 because in our code we will insert the start byte at the beginning, so everything will be pushed forward by 1
                         index = 0; // reset the index
                         break;
                     default:
@@ -189,7 +189,7 @@ int main(int argc, char* argv[])
     i = findReference("_CODE_");
     if(i == -1) i = 0;
     else i = REFERENCES[i].offset;
-    const int code_start = i + 1; // +1 since the first byte states where the program begins
+    const int code_start = i;
 
     printf("%i\n", code_start);
     fwrite(&code_start, sizeof(int), 1, output);
@@ -246,7 +246,7 @@ int main(int argc, char* argv[])
                                             printf("Invalid integer or label value [%s] on line %i.\n", buffer, line);
                                             return -1;
                                         }
-                                        i = REFERENCES[i].offset + 1;
+                                        i = REFERENCES[i].offset;
                                     } else {
                                         len = strlen(buffer);
                                         for(i = 0; i < len; i++) {
