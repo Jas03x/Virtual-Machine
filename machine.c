@@ -293,7 +293,7 @@ int main()
             case ADD:
                 v0 = read_b();
                 v1 = read_b();
-                dprintf("ADD %c %c\n", v0, v1);
+                dprintf("ADD %i %i\n", v0, v1);
                 switch(v0) {
                     case AL:
                     case BL:
@@ -344,7 +344,7 @@ int main()
             case SUB:
                 v0 = read_b();
                 v1 = read_b();
-                dprintf("SUB %c %c\n", v0, v1);
+                dprintf("SUB %i %i\n", v0, v1);
                 switch(v0) {
                     case AL:
                     case BL:
@@ -609,7 +609,7 @@ int main()
 
             case FETCH:
                 v0 = read_b();
-                dprintf("FETCH %i\n", v0);
+                dprintf("FETCH %i -> ", v0);
                 switch(v0)
                 {
                     case AL:
@@ -621,13 +621,15 @@ int main()
                     case CH:
                     case DH:
                         *REG8[v0 - REG8_OFFSET] = RAM[REGISTERS[ESI].m32];
+                        dprintf("%i\n", *REG8[v0 - REG8_OFFSET]);
                         break;
 
                     case AX:
                     case BX:
                     case CX:
                     case DX:
-                        memcpy(&REG16[v0 - REG16_OFFSET], &RAM[REGISTERS[ESI].m32], sizeof(short));
+                        memcpy(REG16[v0 - REG16_OFFSET], &RAM[REGISTERS[ESI].m32], sizeof(short));
+                        dprintf("%i\n", *REG16[v0 - REG16_OFFSET]);
                         break;
 
                     case EAX:
@@ -639,6 +641,7 @@ int main()
                     case ESI:
                     case EDI:
                         memcpy(&REGISTERS[v0].m32, &RAM[REGISTERS[ESI].m32], sizeof(int));
+                        dprintf("%i\n", REGISTERS[v0].m32);
                         break;
 
                     default:

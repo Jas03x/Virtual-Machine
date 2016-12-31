@@ -146,6 +146,19 @@ int int_encode(char* str) {
     return i;
 }
 
+char acsii_encode(char* str) {
+    if(str[1] == '\\') {
+        if(str[3] != '\'') return -1;
+        switch(str[2]) {
+            case 'n': return '\n';
+            default: return -1;
+        }
+    } else {
+        if(str[2] != '\'') return -1;
+        return str[1];
+    }
+}
+
 float float_encode(char* str) {
     int len = strlen(str);
     int i = 0;
@@ -376,6 +389,7 @@ int main(int argc, char* argv[])
                     printf("Error expected array beginning on line %i.\n", line);
                     return -1;
                 }
+                buffer_index = 0;
                 break;
 
             case ';':
@@ -567,8 +581,8 @@ int main(int argc, char* argv[])
                             printf("b:[%s]\n", buffer);
                         }
                         else if(buffer[0] == '\'') {
-                            t_byte = buffer[1];
-                            if(buffer[2] != '\'') {
+                            t_byte = acsii_encode(buffer);
+                            if(t_byte == -1) {
                                 printf("Invalid expression [%s] on line [%i].\n", buffer, line);
                                 return -1;
                             }
@@ -593,8 +607,8 @@ int main(int argc, char* argv[])
                             printf("s:[%s]\n", buffer);
                         }
                         else if(buffer[0] == '\'') {
-                            t_short = buffer[1];
-                            if(buffer[2] != '\'') {
+                            t_short = acsii_encode(buffer);
+                            if(t_short == -1) {
                                 printf("Invalid expression [%s] on line [%i].\n", buffer, line);
                                 return -1;
                             }
@@ -619,8 +633,8 @@ int main(int argc, char* argv[])
                             printf("i:[%s]\n", buffer);
                         }
                         else if(buffer[0] == '\'') {
-                            t_int = buffer[1];
-                            if(buffer[2] != '\'') {
+                            t_int = acsii_encode(buffer);
+                            if(t_int == -1) {
                                 printf("Invalid expression [%s] on line [%i].\n", buffer, line);
                                 return -1;
                             }
