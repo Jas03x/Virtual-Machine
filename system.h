@@ -26,6 +26,8 @@
 #define POP    14  // pop the stack
 #define FETCH  15  // access at
 #define WRITE  16  // set at
+#define CALL   17  // call
+#define RET    18  // return to the last call's location
 
 // Instruction opcode specifications:
 // NOP   - NA
@@ -45,6 +47,8 @@
 // POP   - byte
 // FETCH - byte
 // WRITE - byte
+// CALL  - int
+// RET   - NA
 
 // Instruction explanations:
 // NOP - do nothing
@@ -64,6 +68,8 @@
 // POP - pop the registers value
 // FETCH - get the value from the stack onto the registers (uses the ESI register)
 // WRITE - write the register's value onto the stack (uses the EDI register)
+// CALL - jump to the location in memory and then continue executing from this function call
+// RET - jump to the next address in the stack
 
 // ROM setup:
 // Code segment integer (the byte at which the code begins)
@@ -120,7 +126,7 @@
 
 // assembly data types:
 // Strings - byte data: "..."
-//
+// Defines: #def name value
 // Arrays: <_type_>[e0, e1, ....] where the elements are seperated by commas
 // 
 // Byte - 8 bits

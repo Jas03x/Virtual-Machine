@@ -42,8 +42,11 @@ int instruction_encode(char* str)
                 else return -1;
             case 'P':
                 if(strcmp(str, "POP") == 0) return POP; else return -1;
+            case 'R':
+                if(strcmp(str, "RET") == 0) return RET; else return -1;
         }
     }
+    else if(strcmp(str, "CALL") == 0) return CALL;
     else if(strcmp(str, "PUSH") == 0) return PUSH;
     else if(strcmp(str, "FETCH") == 0) return FETCH;
     else if(strcmp(str, "WRITE") == 0) return WRITE;
@@ -315,12 +318,13 @@ int main(int argc, char* argv[])
 
         switch(c)
         {
-            case ':':
+            /*case ':':
                 buffer[buffer_index] = '\0';
                 printf("New label: %s\n", buffer);
                 addLabel(buffer, offset);
                 buffer_index = 0;
                 break;
+                */
 
             case '"':
                 // read the string
@@ -381,8 +385,20 @@ int main(int argc, char* argv[])
                 line++;
             case ' ':
             case '\t':
+                if(buffer_index == 0) break;
                 buffer[buffer_index++] = '\0';
                 if(strlen(buffer) == 0){ line++; buffer_index = 0; break; }
+                
+                if(buffer_index >= 2) {
+                    if(buffer[buffer_index - 2] == ':') {
+                        buffer[buffer_index - 2] = '\0';
+                        printf("New label: %s\n", buffer);
+                        addLabel(buffer, offset);
+                        buffer_index = 0;
+                        break;
+                    }
+                }
+
 
                 switch(symbol)
                 {
@@ -394,7 +410,7 @@ int main(int argc, char* argv[])
                         }
 
                         switch(opcode) {
-                            case NOP:   opcode = NOP;   printf("%i: NOP ",   offset); break;
+                            case NOP:   opcode = NOP;   printf("%i: NOP\n",  offset); symbol = 0;  break;
                             case INT:   opcode = INT;   printf("%i: INT ",   offset); symbol = 6;  break;
                             case MOV:   opcode = MOV;   printf("%i: MOV ",   offset); symbol = 1;  break;
                             case CPY:   opcode = CPY;   printf("%i: CPY ",   offset); symbol = 9;  break;
@@ -411,6 +427,8 @@ int main(int argc, char* argv[])
                             case POP:   opcode = POP;   printf("%i: POP ",   offset); symbol = 10; break;
                             case FETCH: opcode = FETCH; printf("%i: FETCH ", offset); symbol = 10; break;
                             case WRITE: opcode = WRITE; printf("%i: WRITE ", offset); symbol = 10; break;
+                            case RET:   opcode = RET;   printf("%i: RET\n",  offset); symbol = 0;  break;
+                            case CALL:  opcode = CALL;  printf("%i: CALL ",  offset); symbol = 8;  break;
                             default:
                                 printf("Unknown opcode [%s] on line %i.\n", buffer, line);
                                 return -1;
@@ -419,6 +437,7 @@ int main(int argc, char* argv[])
                         addSymbol(&opcode, 1);
                         buffer_index = 0;
                         offset ++;
+                        SKIP:
                         break;
                     
                     case 9:  // expecting 2 registers
@@ -547,10 +566,19 @@ int main(int argc, char* argv[])
                             addPostProcessor(buffer, offset, line, 1);
                             printf("b:[%s]\n", buffer);
                         }
+                        else if(buffer[0] == '\'') {
+                            t_byte = buffer[1];
+                            if(buffer[2] != '\'') {
+                                printf("Invalid expression [%s] on line [%i].\n", buffer, line);
+                                return -1;
+                            }
+                            printf("b:%i\n", t_byte);
+                        }
                         else {
                             t_byte = byte_encode(buffer);
                             printf("b:%i\n", t_byte);
                         }
+
                         addSymbol(&t_byte, 1);
                         offset ++;
                         buffer_index = 0;
@@ -564,16 +592,25 @@ int main(int argc, char* argv[])
                             addPostProcessor(buffer, offset, line, 2);
                             printf("s:[%s]\n", buffer);
                         }
+                        else if(buffer[0] == '\'') {
+                            t_short = buffer[1];
+                            if(buffer[2] != '\'') {
+                                printf("Invalid expression [%s] on line [%i].\n", buffer, line);
+                                return -1;
+                            }
+                            printf("s:%i\n", t_short);
+                        }
                         else {
                             printf("s:%i\n", t_short);
                             t_short = short_encode(buffer);
                         }
+
                         addSymbol(&t_short, 2);
                         offset += 2;
                         buffer_index = 0;
                         symbol = 0;
                         break;
-
+                    
                     case 8: // expecting an integer
                         if(isLetter(buffer[0])) {
                             t_int = 0;
@@ -581,10 +618,19 @@ int main(int argc, char* argv[])
                             addPostProcessor(buffer, offset, line, 4);
                             printf("i:[%s]\n", buffer);
                         }
+                        else if(buffer[0] == '\'') {
+                            t_int = buffer[1];
+                            if(buffer[2] != '\'') {
+                                printf("Invalid expression [%s] on line [%i].\n", buffer, line);
+                                return -1;
+                            }
+                            printf("i:%i\n", t_int);
+                        }
                         else {
                             t_int = int_encode(buffer);
                             printf("i:%i\n", t_int);
                         }
+
                         addSymbol(&t_int, 4);
                         offset += 4;
                         buffer_index = 0;
@@ -641,7 +687,9 @@ int main(int argc, char* argv[])
 
     int i = 0, o = 0;;
     for(; i < post_processors_index; i++) {
+        printf("Substituting %i of %i: ", i, post_processors_index);
         PostProcessor* p = &post_processors[i];
+        printf("%s\n", p->name);
         Label* label = findLabel(p->name);
         printf("Line %i: Swap [%s] at byte [%i] of size [%i].\n", p->line, p->name, p->offset, p->size);
 

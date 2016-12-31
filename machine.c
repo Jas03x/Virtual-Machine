@@ -91,8 +91,9 @@ int main()
         return -1;
     }
 
-    int RUNNING = 1;
-    char OP, v0, v1;
+    int RUNNING = 1; // runing boolean
+    int i; // a temporary use integer
+    char OP, v0, v1; // temporary use characters
     while(RUNNING)
     {
         // increment the stack pointer for the next bit
@@ -102,6 +103,7 @@ int main()
         {
             case INT:
                 v0 = read_b();
+                dprintf("INT %i\n", v0);
                 switch(v0)
                 {
                     case EXIT:
@@ -123,32 +125,33 @@ int main()
                 break;
 
             case MOV:
-                v0 = RAM[REGISTERS[EIP].m32++];
+                v0 = read_b();
+                dprintf("MOV %i ", v0);
                 switch(v0)
                 {
-                    case AL: REGISTERS[EAX].m8[L] = read_b(); break;
-                    case BL: REGISTERS[EBX].m8[L] = read_b(); break;
-                    case CL: REGISTERS[ECX].m8[L] = read_b(); break;
-                    case DL: REGISTERS[EDX].m8[L] = read_b(); break;
+                    case AL: REGISTERS[EAX].m8[L] = read_b(); dprintf("%i\n", REGISTERS[EAX].m8[L]); break;
+                    case BL: REGISTERS[EBX].m8[L] = read_b(); dprintf("%i\n", REGISTERS[EBX].m8[L]); break;
+                    case CL: REGISTERS[ECX].m8[L] = read_b(); dprintf("%i\n", REGISTERS[ECX].m8[L]); break;
+                    case DL: REGISTERS[EDX].m8[L] = read_b(); dprintf("%i\n", REGISTERS[EDX].m8[L]); break;
 
-                    case AH: REGISTERS[EAX].m8[H] = read_b(); break;
-                    case BH: REGISTERS[EBX].m8[H] = read_b(); break;
-                    case CH: REGISTERS[ECX].m8[H] = read_b(); break;
-                    case DH: REGISTERS[EDX].m8[H] = read_b(); break;
+                    case AH: REGISTERS[EAX].m8[H] = read_b(); dprintf("%i\n", REGISTERS[EAX].m8[H]); break;
+                    case BH: REGISTERS[EBX].m8[H] = read_b(); dprintf("%i\n", REGISTERS[EBX].m8[H]); break;
+                    case CH: REGISTERS[ECX].m8[H] = read_b(); dprintf("%i\n", REGISTERS[ECX].m8[H]); break;
+                    case DH: REGISTERS[EDX].m8[H] = read_b(); dprintf("%i\n", REGISTERS[EDX].m8[H]); break;
 
-                    case AX: REGISTERS[EAX].m16 = read_s(); break;
-                    case BX: REGISTERS[EBX].m16 = read_s(); break;
-                    case CX: REGISTERS[ECX].m16 = read_s(); break;
-                    case DX: REGISTERS[EDX].m16 = read_s(); break;
+                    case AX: REGISTERS[EAX].m16 = read_s(); dprintf("%i\n", REGISTERS[EAX].m16); break;
+                    case BX: REGISTERS[EBX].m16 = read_s(); dprintf("%i\n", REGISTERS[EBX].m16); break;
+                    case CX: REGISTERS[ECX].m16 = read_s(); dprintf("%i\n", REGISTERS[ECX].m16); break;
+                    case DX: REGISTERS[EDX].m16 = read_s(); dprintf("%i\n", REGISTERS[EDX].m16); break;
 
-                    case EAX: REGISTERS[EAX].m32 = read_i(); break;
-                    case EBX: REGISTERS[EBX].m32 = read_i(); break;
-                    case ECX: REGISTERS[ECX].m32 = read_i(); break;
-                    case EDX: REGISTERS[EDX].m32 = read_i(); break;
-                    case ESB: REGISTERS[ESB].m32 = read_i(); break;
-                    case ESP: REGISTERS[ESP].m32 = read_i(); break;
-                    case ESI: REGISTERS[ESI].m32 = read_i(); break;
-                    case EDI: REGISTERS[EDI].m32 = read_i(); break;
+                    case EAX: REGISTERS[EAX].m32 = read_i(); dprintf("%i\n", REGISTERS[EAX].m32); break;
+                    case EBX: REGISTERS[EBX].m32 = read_i(); dprintf("%i\n", REGISTERS[EBX].m32); break;
+                    case ECX: REGISTERS[ECX].m32 = read_i(); dprintf("%i\n", REGISTERS[ECX].m32); break;
+                    case EDX: REGISTERS[EDX].m32 = read_i(); dprintf("%i\n", REGISTERS[EDX].m32); break;
+                    case ESB: REGISTERS[ESB].m32 = read_i(); dprintf("%i\n", REGISTERS[ESB].m32); break;
+                    case ESP: REGISTERS[ESP].m32 = read_i(); dprintf("%i\n", REGISTERS[ESP].m32); break;
+                    case ESI: REGISTERS[ESI].m32 = read_i(); dprintf("%i\n", REGISTERS[ESI].m32); break;
+                    case EDI: REGISTERS[EDI].m32 = read_i(); dprintf("%i\n", REGISTERS[EDI].m32); break;
 
                     default:
                         printf("VM Crash: Bad move destination register [%i]\n", v0);
@@ -159,6 +162,7 @@ int main()
             case CPY:
                 v0 = read_b();
                 v1 = read_b();
+                dprintf("CPY %c %c\n", v0, v1);
                 switch(v0) {
                     case AL:
                     case BL:
@@ -206,7 +210,8 @@ int main()
                 break;
 
             case INC:
-                v0 = RAM[REGISTERS[EIP].m32++];
+                v0 = read_b();
+                dprintf("INC %i -> ", v0);
                 switch(v0)
                 {
                     case AL:
@@ -217,14 +222,16 @@ int main()
                     case BH:
                     case CH:
                     case DH:
-                        REG8[v0 - REG8_OFFSET] += read_b(); // 8 bit mode - add 1 byte
+                        *REG8[v0 - REG8_OFFSET] += read_b(); // 8 bit mode - add 1 byte
+                        dprintf("%i\n", *REG8[v0 - REG8_OFFSET]);
                         break;
 
                     case AX:
                     case BX:
                     case CX:
                     case DX:
-                        REG16[v0 - REG16_OFFSET] += read_s(); // 16 bit mode - add 1 short
+                        *REG16[v0 - REG16_OFFSET] += read_s(); // 16 bit mode - add 1 short
+                        dprintf("%i\n", *REG16[v0 - REG16_OFFSET]);
                         break;
 
                     case EAX:
@@ -235,6 +242,7 @@ int main()
                     case ESI:
                     case EDI:
                         REGISTERS[v0].m32 += read_i(); // 32 bit mode - add 1 int
+                        dprintf("%i\n", REGISTERS[v0].m32);
                         break;
 
                     default:
@@ -245,6 +253,7 @@ int main()
                 
             case DEC:
                 v0 = read_b();
+                dprintf("DEC %c\n", v0);
                 switch(v0)
                 {
                     case AL:
@@ -284,6 +293,7 @@ int main()
             case ADD:
                 v0 = read_b();
                 v1 = read_b();
+                dprintf("ADD %c %c\n", v0, v1);
                 switch(v0) {
                     case AL:
                     case BL:
@@ -334,7 +344,7 @@ int main()
             case SUB:
                 v0 = read_b();
                 v1 = read_b();
-                printf("SUB %i %i\n", v0, v1);
+                dprintf("SUB %c %c\n", v0, v1);
                 switch(v0) {
                     case AL:
                     case BL:
@@ -384,26 +394,31 @@ int main()
 
             case JMP:
                 REGISTERS[EIP].m32 = read_i();
+                dprintf("JMP -> %i\n", REGISTERS[EIP].m32);
                 break;
 
             case JEQ:
-                v1 = read_i();
-                if(REGISTERS[FLG].m32 & EQ_FLAG) REGISTERS[EIP].m32 = v1;
+                i = read_i();
+                dprintf("JEQ %i\n", i);
+                if(REGISTERS[FLG].m32 & EQ_FLAG) REGISTERS[EIP].m32 = i;
                 break;
 
             case JGE:
-                v1 = read_i();
-                if(REGISTERS[FLG].m32 & GT_FLAG) REGISTERS[EIP].m32 = v1;
+                i = read_i();
+                dprintf("JGE %i\n", i);
+                if(REGISTERS[FLG].m32 & GT_FLAG) REGISTERS[EIP].m32 = i;
                 break;
 
             case JLE:
-                v1 = read_i();
-                if(REGISTERS[FLG].m32 & LS_FLAG) REGISTERS[EIP].m32 = v1;
+                i = read_i();
+                dprintf("JLE %i\n", i);
+                if(REGISTERS[FLG].m32 & LS_FLAG) REGISTERS[EIP].m32 = i;
                 break;
 
             case CMP:
                 v0 = read_b();
                 v1 = read_b();
+                dprintf("CMP %i %i -> ", v0, v1);
                 REGISTERS[FLG].m32 = 0; // clear the flags
                 switch(v0) {
                     case AL:
@@ -418,6 +433,7 @@ int main()
                             printf("VM Crash: Invalid cmp operation operands: [%i] and [%i].\n", v0, v1);
                             return -1;
                         }
+                        dprintf("%i vs %i\n", *REG8[v0 - REG8_OFFSET], *REG8[v1 - REG8_OFFSET]);
                         v0 = *REG8[v0 - REG8_OFFSET] - *REG8[v1 - REG8_OFFSET];
                         if(v0 == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
                         else if(v0 < 0) REGISTERS[FLG].m32 |= LS_FLAG;
@@ -432,6 +448,7 @@ int main()
                             printf("VM Crash: Invalid cmp operation operands: [%i] and [%i].\n", v0, v1);
                             return -1;
                         }
+                        dprintf("%i vs %i\n", *REG16[v0 - REG16_OFFSET], *REG16[v1 - REG16_OFFSET]);
                         v0 = *REG16[v0 - REG16_OFFSET] - *REG16[v1 - REG16_OFFSET];
                         if(v0 == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
                         else if(v0 < 0) REGISTERS[FLG].m32 |= LS_FLAG;
@@ -449,6 +466,7 @@ int main()
                             printf("VM Crash: Invalid cmp operation operands: [%i] and [%i].\n", v0, v1);
                             return -1;
                         }
+                        dprintf("%i vs %i\n", REGISTERS[v0].m32, REGISTERS[v1].m32);
                         v0 = REGISTERS[v0].m32 - REGISTERS[v1].m32;
                         if(v0 == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
                         else if(v0 < 0) REGISTERS[FLG].m32 |= LS_FLAG;
@@ -463,6 +481,7 @@ int main()
 
             case PUSH:
                 v0 = read_b();
+                dprintf("PUSH %i\n", v0);
                 switch(v0)
                 {
                     case AL:
@@ -493,18 +512,21 @@ int main()
                     case ESP:
                     case ESI:
                     case EDI:
+                    case EIP:
+                    case FLG:
                         memcpy(&RAM[REGISTERS[ESP].m32], &REGISTERS[v0].m32, sizeof(int));
                         REGISTERS[ESP].m32 += 4;
                         break;
 
                     default:
                         printf("VM Crash: Invalid push register [%i].\n", v0);
-                        break;
+                        return -1;
                 }
                 break;
 
             case POP:
                 v0 = read_b();
+                dprintf("POP %i\n", v0);
                 switch(v0)
                 {
                     case AL:
@@ -515,7 +537,7 @@ int main()
                     case BH:
                     case CH:
                     case DH:
-                        *REG8[v0 - REG8_OFFSET] = RAM[REGISTERS[ESP].m32];
+                        *REG8[v0 - REG8_OFFSET] = RAM[REGISTERS[ESP].m32 - 1];
                         REGISTERS[ESP].m32 --;
                         break;
 
@@ -523,7 +545,7 @@ int main()
                     case BX:
                     case CX:
                     case DX:
-                        memcpy(&REG16[v0 - REG16_OFFSET], &RAM[REGISTERS[ESP].m32], sizeof(short));
+                        memcpy(&REG16[v0 - REG16_OFFSET], &RAM[REGISTERS[ESP].m32 - 2], sizeof(short));
                         REGISTERS[ESP].m32 -= 2;
                         break;
 
@@ -535,18 +557,19 @@ int main()
                     case ESP:
                     case ESI:
                     case EDI:
-                        memcpy(&REGISTERS[v0].m32, &RAM[REGISTERS[ESP].m32], sizeof(int));
+                        memcpy(&REGISTERS[v0].m32, &RAM[REGISTERS[ESP].m32 - 4], sizeof(int));
                         REGISTERS[ESP].m32 -= 4;
                         break;
 
                     default:
                         printf("VM Crash: Invalid pop register [%i].\n", v0);
-                        break;
+                        return -1;
                 }
                 break;
 
             case WRITE:
                 v0 = read_b();
+                dprintf("WRITE %i\n", v0);
                 switch(v0)
                 {
                     case AL:
@@ -580,12 +603,13 @@ int main()
 
                     default:
                         printf("VM Crash: Invalid set operation register [%i].\n", v0);
-                        break;
+                        return -1;
                 }
                 break;
 
             case FETCH:
                 v0 = read_b();
+                dprintf("FETCH %i\n", v0);
                 switch(v0)
                 {
                     case AL:
@@ -619,12 +643,29 @@ int main()
 
                     default:
                         printf("VM Crash: Invalid get operation register [%i].\n", v0);
-                        break;
+                        return -1;
                 }
                 break;
 
-            defualt:
-                printf("VM Crash: Invalid op-code [%i].\n", v0);
+            case CALL:
+                i = read_i(); // the location to jump to
+                // push the instruction register to the stack
+                memcpy(&RAM[REGISTERS[ESP].m32], &REGISTERS[EIP].m32, sizeof(int));
+                dprintf("Pushed EIP: %i\n", REGISTERS[EIP].m32);
+                REGISTERS[ESP].m32 += 4;
+                // jump to the location in memory
+                REGISTERS[EIP].m32 = i;
+                dprintf("Set EIP: %i\n", i);
+                break;
+
+            case RET:
+                memcpy(&REGISTERS[EIP].m32, &RAM[REGISTERS[ESP].m32 - 4], sizeof(int));
+                REGISTERS[ESP].m32 -= 4;
+                dprintf("RET -> %i\n", REGISTERS[EIP].m32);
+                break;
+
+            default:
+                printf("VM Crash: Invalid op-code [%i].\n", OP);
                 return -1;
         }
     }
