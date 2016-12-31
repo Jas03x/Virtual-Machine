@@ -68,6 +68,7 @@ int readROM()
     fread(&REGISTERS[EIP].m32, sizeof(int), 1, file);
 
     if(fread(RAM, 1, size - 4, file) != size - 4) return -1;
+    REGISTERS[ESB].m32 += size;
     REGISTERS[ESP].m32 += size;
 
     fclose(file);
@@ -88,6 +89,13 @@ int main()
     if(readROM() != 0)
     {
         puts("ROM reading exception.");
+        return -1;
+    }
+
+    // open the file descriptor for the hard-drive:
+    FILE* DRIVE = fopen("DRIVE", "rb");
+    if(!DRIVE) {
+        puts("Error opening virtual machine drive file.");
         return -1;
     }
 
@@ -116,6 +124,26 @@ int main()
 
                     case PRINT_CHAR:
                         printf("%c", (char) REGISTERS[EAX].m32);
+                        break;
+
+                    case READ_DISK:
+                        dprintf("READ: %i to %i\n", REGISTERS[EAX].m32, REGISTERS[EBX].m32);
+                        if(REGISTERS[EAX].m32 < 0 || REGISTERS[EBX].m32 < 0 || REGISTERS[EAX].m32 >= REGISTERS[EBX].m32) {
+                            printf("VM Crash: Invalid read registers: EAX=[%i] EBX=[%i]\n", REGISTERS[EAX].m32, REGISTERS[EBX].m32);
+                        }
+                        if(fseek(DRIVE, REGISTERS[EAX].m32, SEEK_SET) != 0) {
+                            printf("VM Crash: Invalid READ_DISK start position [%i].\n", REGISTERS[EAX].m32);
+                            return -1;
+                        }
+                        if(REGISTERS[EBX].m32 - REGISTERS[EAX].m32 + REGISTERS[ESP].m32 > RAM_SIZE) {
+                            puts("VM Crash: READ_DISK stack overflow.");
+                            return -1;
+                        }
+                        if(fread(&RAM[REGISTERS[ESP].m32], 1, REGISTERS[EBX].m32 - REGISTERS[EAX].m32, DRIVE) != REGISTERS[EBX].m32 - REGISTERS[EAX].m32) {
+                            puts("VM Crash: READ_DISK failure.");
+                            return -1;
+                        }
+                        REGISTERS[ESP].m32 += REGISTERS[EBX].m32 - REGISTERS[EAX].m32;
                         break;
 
                     default:
@@ -672,6 +700,8 @@ int main()
                 return -1;
         }
     }
+
+    fclose(DRIVE);
 
     return 0;
 }

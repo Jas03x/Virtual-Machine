@@ -123,6 +123,13 @@
 #define EXIT 1
 #define PRINT_INT  2
 #define PRINT_CHAR 3
+#define READ_DISK  4
+
+// NOTE: This explains the read disk interrupt:
+// This interrupt will read the disk and push the data onto the stack
+// The following registers are used by this interrupt:
+// EAX - Mark the start of the location of the hard drive to read
+// EBX - Mark the end of the location of the hard drive to read
 
 // assembly data types:
 // Strings - byte data: "..."
@@ -136,5 +143,6 @@
 //
 // Example of an array of shorts:
 // my_array: <short>[1, 2, 3, 4]
+//
 
 #endif

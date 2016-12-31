@@ -49,7 +49,7 @@ This machine uses 65536 bytes of program memory.
   * JGE i - if the last CMP operation's r0 operand was greater than r1, jump to the i'th byte
   * PUSH r - push r's value onto the stack
   * POP r - pop the stack onto r
-  * FETCJ r0 r1 - read the stack at r1 and store in r0
+  * FETCH r0 r1 - read the stack at r1 and store in r0
   * WRITE r0 r1 - overwrite the stack at r0 with r1
   * CALL i - jump to the i'th location in memory
   * RET - return to the address stored at the stack top
@@ -58,10 +58,15 @@ This machine uses 65536 bytes of program memory.
   - 1 = Exit
   - 2 = Print integer
   - 3 = Print character
+  - 4 = Read disk (more information below)
 
+---------------------------------------------------------------------------------------------------------------------------
+# File I/O:
+The virtual hard drive is the “DRIVE” file. All the virtual disk partitions, data, etc are stored in this file only.
 
 ---------------------------------------------------------------------------------------------------------------------------
 # Examples:
 * function.asm - A simple example which uses the call/ret codes and the stack
 * program.asm - A simple hello world example
 * add_array.asm - A program which reads shorts off the program memory and displays their sum
+* read_hd.asm - A program which reads the DRIVE file and prints the first 6 bytes

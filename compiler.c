@@ -288,7 +288,7 @@ void addPostProcessor(char* name, int offset, int line, int size) {
 
 Label* findLabel(const char* str) {
     int o = 0;
-    for(o = 0; o < labels_count; o++) {
+    for(o = 0; o < label_index; o++) {
         if(strcmp(labels[o].name, str) == 0) {
             return &labels[o];
         }
@@ -742,6 +742,7 @@ int main(int argc, char* argv[])
 
     fclose(input);
 
+    puts("Writing output");
     // write the output
     FILE* output = fopen(argv[2], "wb");
     if(!output) {
