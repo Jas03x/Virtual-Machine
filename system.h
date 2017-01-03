@@ -6,7 +6,7 @@
 #include <string.h>
 
 // definitions
-#define RAM_SIZE 65536 // 65536 bytes of ram
+#define RAM_SIZE 2097152 // 2097152 bytes of ram
 
 // OP-CODES:
 #define NOP     0  // no operation
@@ -120,10 +120,13 @@
 #define LS_FLAG 4 // LESS FLAG
 
 // interupt options:
-#define EXIT 1
+#define EXIT       1
 #define PRINT_INT  2
 #define PRINT_CHAR 3
 #define READ_DISK  4
+#define DRAW_PIXEL 5
+#define POLL       6
+#define REDRAW     7
 
 // NOTE: This explains the read disk interrupt:
 // This interrupt will read the disk and push the data onto the stack

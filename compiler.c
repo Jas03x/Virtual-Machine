@@ -154,7 +154,7 @@ int parse_value(char* str, int line, int mode) {
                         exit(-1);
                     }
                     return i;
-                defualt:
+                default:
                     puts("Undefined mode paramter in value encode.");
                     exit(-1);
             }
@@ -298,6 +298,11 @@ Label* findLabel(const char* str) {
     return NULL;
 }
 
+int offset = 0; // the current offset in bytes
+
+void read(const char* path);
+void link(const char* path);
+
 int main(int argc, char* argv[])
 {
     if(argc != 3) {
@@ -305,18 +310,45 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    FILE* input = fopen(argv[1], "r");
-    if(!input) {
-        printf("Could not open input file [%s] for reading.\n", argv[1]);
+    allocArrays();
+    read(argv[1]);
+
+    puts("Writing output");
+    // write the output
+    FILE* output = fopen(argv[2], "wb");
+    if(!output) {
+        printf("Could not open output file [%s] for writing.\n", argv[2]);
         return -1;
     }
+    Label* code_start = findLabel("_CODE_");
+    int start = 0;
+    if(code_start == NULL) start = 0; else start = code_start->offset;
+    printf("Code start: %i\n", start);
+    fwrite(&start, sizeof(int), 1, output);
 
-    allocArrays();
+    // write the code symbols
+    printf("Writing [%i] symbols.\n", symbol_index);
+    fwrite(symbols, sizeof(char), symbol_index, output);
+    fclose(output);
+
+    freeArrays();
+
+    puts("Successful termination");
+    return 0;
+}
+
+
+void read(const char* path)
+{
+    FILE* input = fopen(path, "r");
+    if(!input) {
+        printf("Could not open input file [%s] for reading.\n", path);
+        exit(-1);
+    }
 
     // temporary use variables
     char reg = 0; // the register
     char opcode = 0; // the current opcode
-    int offset = 0; // the current offset in bytes
     unsigned int line = 0; // the current line number
     unsigned int symbol = 0; // the current type of symbol being read (for the FSM)
 
@@ -350,14 +382,14 @@ int main(int argc, char* argv[])
                                 break;
                             default:
                                 printf("Unknown escape character on line %i: %c.\n", line, c);
-                                return -1;
+                                exit(-1);
                         }
                     }
                     offset++;
                     printf("%c", c);
                     if(feof(input) != 0) {
                         printf("Unexpected end of file on line %i: string not terminated.\n", line);
-                        return -1;
+                        exit(-1);
                     }
                     addSymbol(&c, 1);
                 }
@@ -369,7 +401,7 @@ int main(int argc, char* argv[])
                 buffer[buffer_index] = '\0';
                 if(buffer[0] != '<') {
                     printf("Bad array type expression on line %i.\n", line);
-                    return -1;
+                    exit(-1);
                 }
 
                 // get the type of the array:
@@ -379,12 +411,12 @@ int main(int argc, char* argv[])
                 else if(strcmp(buffer + 1, "float") == 0){ printf("floats: "); symbol = 5; }
                 else {
                     printf("Invalid array type [%s] on line %i.\n", buffer, line);
-                    return -1;
+                    exit(-1);
                 }
 
                 if(fgetc(input) != '[') {
                     printf("Error expected array beginning on line %i.\n", line);
-                    return -1;
+                    exit(-1);
                 }
                 buffer_index = 0;
                 break;
@@ -409,6 +441,19 @@ int main(int argc, char* argv[])
                     }
                 }
 
+                // check if this is an include statement
+                if(buffer[0] == '#') {
+                    if(strcmp(buffer + 1, "include") == 0) {
+                        symbol = 14;
+                    } else if(strcmp(buffer + 1, "link")) {
+                        symbol = 15;
+                    } else {
+                        printf("Unknown directive [%s] on line [%i].\n", buffer, line);
+                        exit(-1);
+                    }
+                    buffer_index = 0;
+                    break;
+                }
 
                 switch(symbol)
                 {
@@ -416,7 +461,7 @@ int main(int argc, char* argv[])
                         opcode = parse_instruction(buffer);
                         if(opcode == -1) {
                             printf("Invalid instruction on line %i: [%s]\n", line, buffer);
-                            return -1;
+                            exit(-1);
                         }
 
                         switch(opcode) {
@@ -441,13 +486,19 @@ int main(int argc, char* argv[])
                             case CALL:  opcode = CALL;  printf("%i: CALL ",  offset); symbol = 8;  break;
                             default:
                                 printf("Unknown opcode [%s] on line %i.\n", buffer, line);
-                                return -1;
+                                exit(-1);
                         }
 
                         addSymbol(&opcode, 1);
                         buffer_index = 0;
                         offset ++;
-                        SKIP:
+                        break;
+
+                    case 14: // expecting the path to the source file to include
+                        read(buffer);
+                        break;
+                    case 15: // expecting the path to the source file to link to
+                        link(buffer);
                         break;
 
                     case 1:  // expecing a register followed by a value
@@ -456,7 +507,7 @@ int main(int argc, char* argv[])
                         reg = parse_register(buffer);
                         if(reg == -1) {
                             printf("Invalid register on line %i: [%s]\n", line, buffer);
-                            return -1;
+                            exit(-1);
                         }
                         printf("r:%i ", reg);
                         addSymbol(&reg, 1);
@@ -543,12 +594,12 @@ int main(int argc, char* argv[])
                         reg = parse_register(buffer);
                         if(reg == -1) {
                             printf("Invalid register on line %i: [%s]\n", line, buffer);
-                            return -1;
+                            exit(-1);
                         }
 
                         if((symbol==11 && !inRange(reg, AL, DH)) || (symbol==12 && !inRange(reg, AX, DX)) || (symbol==13 && !inRange(reg, EAX, FLG))) {
                             printf("Register size mismatch on line %i.\n", line);
-                            return -1;
+                            exit(-1);
                         }
 
                         printf("r:%i\n", reg);
@@ -648,7 +699,7 @@ int main(int argc, char* argv[])
 
                     default:
                         printf("Unexpected symbol [%c] on line %i.\n", c, line);
-                        return -1;
+                        exit(-1);
                 }
                 buffer_index = 0;
                 if(c == ']') symbol = 0;
@@ -660,7 +711,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    int i = 0, o = 0;;
+    int i = 0;
     for(; i < post_processors_index; i++) {
         printf("Substituting %i of %i: ", i, post_processors_index);
         PostProcessor* p = &post_processors[i];
@@ -670,14 +721,14 @@ int main(int argc, char* argv[])
 
         if(label == NULL) {
             printf("Error: Could not find label [%s].\n", p->name);
-            return -1;
+            exit(-1);
         }
 
         switch(p->size) {
             case 1:
                 if(!inRange(label->offset, SCHAR_MIN, SCHAR_MAX)) {
                     printf("Error: Label [%s] offset exceeds the value of a char. Substitution failure at line %i.\n", p->name, p->line);
-                    return -1;
+                    exit(-1);
                 }
                 t_byte = (char) label->offset;
                 memcpy(symbols + p->offset, &t_byte, sizeof(char));
@@ -687,7 +738,7 @@ int main(int argc, char* argv[])
             case 2:
                 if(!inRange(label->offset, SHRT_MIN, SHRT_MAX)) {
                     printf("Error: Label [%s] offset exceeds the value of a short. Substition failure at line %i.\n", p->name, p->line);
-                    return -1;
+                    exit(-1);
                 }
                 t_short = (short) label->offset;
                 memcpy(symbols + p->offset, &t_short, sizeof(short));
@@ -702,26 +753,10 @@ int main(int argc, char* argv[])
     }
 
     fclose(input);
-
-    puts("Writing output");
-    // write the output
-    FILE* output = fopen(argv[2], "wb");
-    if(!output) {
-        printf("Could not open output file [%s] for writing.\n", argv[2]);
-        return -1;
-    }
-    Label* code_start = findLabel("_CODE_");
-    if(code_start == NULL) t_int = 0; else t_int = code_start->offset;
-    printf("Code start: %i\n", t_int);
-    fwrite(&t_int, sizeof(int), 1, output);
-
-    // write the code symbols
-    printf("Writing [%i] symbols.\n", symbol_index);
-    fwrite(symbols, sizeof(char), symbol_index, output);
-    fclose(output);
-
-    freeArrays();
-
-    puts("Successful termination");
-    return 0;
 }
+
+void link(const char* path)
+{
+
+}
+

@@ -4,6 +4,12 @@
 
 #include "system.h"
 
+#include <SDL.h>
+#include <OpenGL/gl3.h>
+
+#define CONSOLE_WIDTH 640
+#define CONSOLE_HEIGHT 480
+
 // debug statement:
 //#define DEBUG_MODE
 
@@ -99,9 +105,30 @@ int main()
         return -1;
     }
 
+    // create the screen:
+    if(SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+        printf("SDL initalization error:\n%s\n", SDL_GetError());
+        return -1;
+    }
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_Window* window = SDL_CreateWindow("Virtual Machine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, CONSOLE_WIDTH, CONSOLE_HEIGHT, SDL_WINDOW_SHOWN);
+    if(window == NULL) {
+        printf("SDL window creation error:\n%s\n", SDL_GetError());
+        return -1;
+    }
+    SDL_GLContext context = SDL_GL_CreateContext(window);
+    if(context == NULL) {
+        printf("SDL opengl context creation error:\n%s\n", SDL_GetError());
+        return -1;
+    }
+
     int RUNNING = 1; // runing boolean
     int i; // a temporary use integer
     char OP, v0, v1; // temporary use characters
+    SDL_Event event;
+
     while(RUNNING)
     {
         // increment the stack pointer for the next bit
@@ -131,19 +158,38 @@ int main()
                         if(REGISTERS[EAX].m32 < 0 || REGISTERS[EBX].m32 < 0 || REGISTERS[EAX].m32 >= REGISTERS[EBX].m32) {
                             printf("VM Crash: Invalid read registers: EAX=[%i] EBX=[%i]\n", REGISTERS[EAX].m32, REGISTERS[EBX].m32);
                         }
+
                         if(fseek(DRIVE, REGISTERS[EAX].m32, SEEK_SET) != 0) {
                             printf("VM Crash: Invalid READ_DISK start position [%i].\n", REGISTERS[EAX].m32);
                             return -1;
                         }
+
                         if(REGISTERS[EBX].m32 - REGISTERS[EAX].m32 + REGISTERS[ESP].m32 > RAM_SIZE) {
                             puts("VM Crash: READ_DISK stack overflow.");
                             return -1;
                         }
+
                         if(fread(&RAM[REGISTERS[ESP].m32], 1, REGISTERS[EBX].m32 - REGISTERS[EAX].m32, DRIVE) != REGISTERS[EBX].m32 - REGISTERS[EAX].m32) {
                             puts("VM Crash: READ_DISK failure.");
                             return -1;
                         }
+
                         REGISTERS[ESP].m32 += REGISTERS[EBX].m32 - REGISTERS[EAX].m32;
+                        break;
+
+                    case POLL: // check if any events were made:
+                        while(SDL_PollEvent(&event)) {
+                            switch(event.type) {
+                                case SDL_QUIT:
+                                    RUNNING = 0;
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+
+                    case REDRAW:
+                        SDL_GL_SwapWindow(window);
                         break;
 
                     default:
@@ -228,7 +274,7 @@ int main()
                             printf("VM Crash: Invalid copy operation operands: [%i] and [%i].\n", v0, v1);
                             return -1;
                         }
-                        REGISTERS[v0].m32 = REGISTERS[v1].m32;
+                        REGISTERS[(int) v0].m32 = REGISTERS[(int) v1].m32;
                         break;
 
                     default:
@@ -269,7 +315,7 @@ int main()
                     case ESP:
                     case ESI:
                     case EDI:
-                        REGISTERS[v0].m32 += read_i(); // 32 bit mode - add 1 int
+                        REGISTERS[(int) v0].m32 += read_i(); // 32 bit mode - add 1 int
                         dprintf("%i\n", REGISTERS[v0].m32);
                         break;
 
@@ -309,7 +355,7 @@ int main()
                     case ESP:
                     case ESI:
                     case EDI:
-                        REGISTERS[v0].m32 -= read_i();
+                        REGISTERS[(int) v0].m32 -= read_i();
                         break;
 
                     default:
@@ -360,7 +406,7 @@ int main()
                             printf("VM Crash: Invalid add operation operands: [%i] and [%i].\n", v0, v1);
                             return -1;
                         }
-                        REGISTERS[v0].m32 += REGISTERS[v1].m32;
+                        REGISTERS[(int) v0].m32 += REGISTERS[(int) v1].m32;
                         break;
 
                     default:
@@ -411,7 +457,7 @@ int main()
                             printf("VM Crash: Invalid sub operation operands: [%i] and [%i].\n", v0, v1);
                             return -1;
                         }
-                        REGISTERS[v0].m32 -= REGISTERS[v1].m32;
+                        REGISTERS[(int) v0].m32 -= REGISTERS[(int) v1].m32;
                         break;
 
                     default:
@@ -495,7 +541,7 @@ int main()
                             return -1;
                         }
                         dprintf("%i vs %i\n", REGISTERS[v0].m32, REGISTERS[v1].m32);
-                        v0 = REGISTERS[v0].m32 - REGISTERS[v1].m32;
+                        v0 = REGISTERS[(int) v0].m32 - REGISTERS[(int) v1].m32;
                         if(v0 == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
                         else if(v0 < 0) REGISTERS[FLG].m32 |= LS_FLAG;
                         else REGISTERS[FLG].m32 |= GT_FLAG;
@@ -542,7 +588,7 @@ int main()
                     case EDI:
                     case EIP:
                     case FLG:
-                        memcpy(&RAM[REGISTERS[ESP].m32], &REGISTERS[v0].m32, sizeof(int));
+                        memcpy(&RAM[REGISTERS[ESP].m32], &REGISTERS[(int) v0].m32, sizeof(int));
                         REGISTERS[ESP].m32 += 4;
                         break;
 
@@ -585,7 +631,7 @@ int main()
                     case ESP:
                     case ESI:
                     case EDI:
-                        memcpy(&REGISTERS[v0].m32, &RAM[REGISTERS[ESP].m32 - 4], sizeof(int));
+                        memcpy(&REGISTERS[(int) v0].m32, &RAM[REGISTERS[ESP].m32 - 4], sizeof(int));
                         REGISTERS[ESP].m32 -= 4;
                         break;
 
@@ -626,7 +672,7 @@ int main()
                     case ESP:
                     case ESI:
                     case EDI:
-                        memcpy(&RAM[REGISTERS[EDI].m32], &REGISTERS[v0].m32, sizeof(int));
+                        memcpy(&RAM[REGISTERS[EDI].m32], &REGISTERS[(int) v0].m32, sizeof(int));
                         break;
 
                     default:
@@ -668,7 +714,7 @@ int main()
                     case ESP:
                     case ESI:
                     case EDI:
-                        memcpy(&REGISTERS[v0].m32, &RAM[REGISTERS[ESI].m32], sizeof(int));
+                        memcpy(&REGISTERS[(int) v0].m32, &RAM[REGISTERS[ESI].m32], sizeof(int));
                         dprintf("%i\n", REGISTERS[v0].m32);
                         break;
 
@@ -702,6 +748,12 @@ int main()
     }
 
     fclose(DRIVE);
+
+    SDL_GL_DeleteContext(context);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    free(RAM);
 
     return 0;
 }
