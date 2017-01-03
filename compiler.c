@@ -7,26 +7,29 @@
 
 #define MAX_LINE_LENGTH 256
 
+// some basic helper function macros:
 #define inRange(x, m, M) ((m) <= (x) && (x) <= (M))
 #define isNumber(x) (inRange((x), 48, 57))
 #define isLetter(x) (inRange((x), 65, 90) || inRange((x), 97, 122))
 #define isChar(x) (isNumber((int) (x)) || isLetter((int) (x)) || (int) x == 95 )
 
-int instruction_encode(char* str)
+// convert a string into the integer representation
+// return -1 if the string does not match any system opcodes
+int parse_instruction(char* str)
 {
     if(strlen(str) == 3) {
         switch(str[0]) {
             case 'N':
                 if(strcmp(str, "NOP") == 0) return NOP; else return -1;
             case 'I':
-                if(strcmp(str, "INT") == 0) return INT; 
+                if(strcmp(str, "INT") == 0) return INT;
                 else if(strcmp(str, "INC") == 0) return INC;
                 else return -1;
             case 'M':
                 if(strcmp(str, "MOV") == 0) return MOV; else return -1;
             case 'C':
                 if(strcmp(str, "CMP") == 0) return CMP;
-                else if(strcmp(str, "CPY") == 0) return CPY; 
+                else if(strcmp(str, "CPY") == 0) return CPY;
                 else return -1;
             case 'A':
                 if(strcmp(str, "ADD") == 0) return ADD; else return -1;
@@ -54,7 +57,9 @@ int instruction_encode(char* str)
     return -1;
 }
 
-int register_encode(char* str)
+// converts the string into the appropriate system register index
+// returns -1 if the string does not match a system register
+int parse_register(char* str)
 {
     if(strlen(str) < 2) return -1;
     switch(str[0])
@@ -96,111 +101,102 @@ int register_encode(char* str)
     return -1;
 }
 
-char byte_encode(char* str) {
-    int len = strlen(str);
-    if(isNumber(str[0]) && len == 1) return atoi(str);
-    else if(len == 3) {
-        if(str[0] == '\'' && str[2] == '\'') {
-            return str[1];
+// parse the string as a value
+// throws an exception if the string contains non-integral characters
+// throws an exception if the integer exceeds the value bounds in limis.h
+// possible value modes:
+#define PARSE_BYTE  0
+#define PARSE_SHORT 1
+#define PARSE_INT   2
+#define PARSE_FLOAT 3
+int parse_value(char* str, int line, int mode) {
+    if(str[0] == '\'') { // if it begins with a quote, then we parse as a byte
+        if(str[1] == '\\') {
+            if(str[3] != '\'') { printf("Unexpecting value [%s] on line [%i].\n", str, line); exit(-1); }
+            return str[2];
         }
         else {
-            printf("Invalid char or single quote parse exception.\n");
-            exit(-1);
-        }
-    }
-    else {
-        printf("Invalid byte string length.\n");
-        exit(-1);
-    }
-}
-
-short short_encode(char* str) {
-    int len = strlen(str);
-    int i = 0;
-    for(; i < len; i++) {
-        if(!isNumber(str[i])) {
-            printf("Invalid character [%c] in short.\n", str[i]);
-            exit(-1);
-        }
-    }
-
-    i = atoi(str);
-    if(i < SHRT_MIN || i > SHRT_MAX) {
-        printf("Error: Short [%i] is not in the valid short range [%i - %i].\n", i, SHRT_MIN, SHRT_MAX);
-        exit(-1);
-    }
-    return i;
-}
-
-int int_encode(char* str) {
-    int len = strlen(str);
-    int i = 0;
-    for(; i < len; i++) {
-        if(!isNumber(str[i])) {
-            printf("Invalid character [%c] in integer.\n", str[i]);
-            exit(-1);
-        }
-    }
-
-    i = atoi(str);
-    return i;
-}
-
-char acsii_encode(char* str) {
-    if(str[1] == '\\') {
-        if(str[3] != '\'') return -1;
-        switch(str[2]) {
-            case 'n': return '\n';
-            default: return -1;
+            if(str[2] != '\'') {
+                return str[1];
+            }
         }
     } else {
-        if(str[2] != '\'') return -1;
-        return str[1];
-    }
-}
+        int i = 0;
 
-float float_encode(char* str) {
-    int len = strlen(str);
-    int i = 0;
-    for(; i < len; i++) {
-        if(!isNumber(str[i]) && str[i] != '.') {
-            printf("Invalid character [%c] in float.\n", str[i]);
-            exit(-1);
+        // check if its a valid value
+        int len = strlen(str);
+        for(; i < len; i++) {
+            if(!isNumber(str[i])) {
+                if(mode == PARSE_FLOAT) {
+                    if(str[i] == '.') continue;
+                    else {
+                        printf("Unexpected value [%s] on line [%i].\n", str, line);
+                        exit(-1);
+                    }
+                }
+            }
+        }
+        if(mode == PARSE_INT) return atoi(str);
+        else if(mode == PARSE_FLOAT) return atof(str);
+        else {
+            i = atoi(str);
+
+            switch(mode) {
+                case PARSE_BYTE:
+                    if(i < SCHAR_MIN || i > SCHAR_MAX ){
+                        printf("Error: Expected byte [%s] on line [%i] exceeds byte limit.\n", str, line);
+                        exit(-1);
+                    }
+                    return i;
+                case PARSE_SHORT:
+                    if(i < SHRT_MIN || i > SHRT_MAX) {
+                        printf("Error: Expected short [%s] on line [%i] exceeds short limit.\n", str, line);
+                        exit(-1);
+                    }
+                    return i;
+                defualt:
+                    puts("Undefined mode paramter in value encode.");
+                    exit(-1);
+            }
         }
     }
-
-    float f = atof(str);
-    return f;
+    return 0;
 }
 
+// label structure for defining offsets for assembly labels
 typedef struct Label {
-    char* name;
-    int offset;
+    char* name; // the name of the assembly label
+    int offset; // the offset in bytes
 }Label;
 
+// the labels array initally has enough space for 16 labels
 #define LABELS_ARRAY_INITAL_SIZE 16
 Label* labels = NULL;
 unsigned int labels_count = 0;
 unsigned int label_index = 0;
 
+// the symbols array is initally enough to store 2048 characters
 #define SYMBOLS_ARRAY_INITIAL_SIZE 2048
-char* symbols;
+char* symbols; // the byte buffer for the source code to write
 unsigned int symbols_count = 0;
 unsigned int symbol_index = 0;
 
+// the post processor structure the references to labels which need to be overwritten with byte offsets
 typedef struct PostProcessor
 {
-    char* name;
-    int offset;
-    int line;
-    int size;
+    char* name; // the name of the reference
+    int offset; // the offset of the symbols to overwrite in bytes
+    int line;   // the line number on which this reference appears
+    int size;   // the size of the symbol in bytes to overwrite
 }PostProcessor;
 
+// the post processors array initally has enough room  for 64 post processor references
 #define POST_PROCESSOR_ARRAY_INITIAL_SIZE 64
 PostProcessor* post_processors;
 unsigned int  post_processors_count = 0;
 unsigned int  post_processors_index = 0;
 
+// allocate all the compilation arrays
 void allocArrays() {
     // initalize any data structures we need
     labels = (Label*) malloc(sizeof(Label) * LABELS_ARRAY_INITAL_SIZE);
@@ -217,6 +213,7 @@ void allocArrays() {
     post_processors_count = POST_PROCESSOR_ARRAY_INITIAL_SIZE;
 }
 
+// dealloc all the compilation arrays we used
 void freeArrays() {
     int i = 0;
     for(; i < label_index; i++)
@@ -230,6 +227,7 @@ void freeArrays() {
     if(post_processors) free(post_processors);
 }
 
+// add a label to the labels array
 void addLabel(char* str, int offset) {
     if(label_index >= labels_count) {
         labels = realloc(labels, sizeof(Label) * labels_count * 2);
@@ -252,6 +250,7 @@ void addLabel(char* str, int offset) {
     label_index ++;
 }
 
+// add the code to the symbols array
 void addSymbol(void* ptr, int bytes) {
     while(symbol_index + bytes >= symbols_count) {
         printf("%i + %i = %i >= %i\n", symbol_index, bytes, symbol_index + bytes, symbols_count);
@@ -267,6 +266,7 @@ void addSymbol(void* ptr, int bytes) {
     symbol_index += bytes;
 }
 
+// add a new post processor to the post processors array
 void addPostProcessor(char* name, int offset, int line, int size) {
     if(post_processors_index >= post_processors_count) {
         post_processors = (PostProcessor*) realloc(post_processors, sizeof(PostProcessor) * post_processors_count * 2);
@@ -286,6 +286,7 @@ void addPostProcessor(char* name, int offset, int line, int size) {
     post_processors_index ++;
 }
 
+// find the label with the given name in the label's array
 Label* findLabel(const char* str) {
     int o = 0;
     for(o = 0; o < label_index; o++) {
@@ -312,13 +313,17 @@ int main(int argc, char* argv[])
 
     allocArrays();
 
-    char reg = 0;
-    char opcode = 0;
-    int offset = 0;
-    unsigned int line = 0;
-    unsigned int symbol = 0;
-    char buffer[MAX_LINE_LENGTH];
-    unsigned int buffer_index = 0;
+    // temporary use variables
+    char reg = 0; // the register
+    char opcode = 0; // the current opcode
+    int offset = 0; // the current offset in bytes
+    unsigned int line = 0; // the current line number
+    unsigned int symbol = 0; // the current type of symbol being read (for the FSM)
+
+    char buffer[MAX_LINE_LENGTH]; // the buffer for the currently read string
+    unsigned int buffer_index = 0; // the index of the next character to be inserted
+
+    // temporary data types used for writing
     char t_byte = 0;
     short t_short = 0;
     int t_int = 0;
@@ -331,21 +336,13 @@ int main(int argc, char* argv[])
 
         switch(c)
         {
-            /*case ':':
-                buffer[buffer_index] = '\0';
-                printf("New label: %s\n", buffer);
-                addLabel(buffer, offset);
-                buffer_index = 0;
-                break;
-                */
-
             case '"':
                 // read the string
                 printf("\"");
                 while(1) {
                     c = fgetc(input);
                     if(c == '"') break;
-                    else if(c == '\\') {
+                    else if(c == '\\') { // parsing special characters
                         c = fgetc(input);
                         switch(c) {
                             case 'n':
@@ -399,13 +396,12 @@ int main(int argc, char* argv[])
                 line++;
             case ' ':
             case '\t':
-                if(buffer_index == 0) break;
-                buffer[buffer_index++] = '\0';
-                if(strlen(buffer) == 0){ line++; buffer_index = 0; break; }
-                
+                if(buffer_index == 0)  { line++; break; } // empty string test
+                buffer[buffer_index++] = '\0'; // null terminate the string
+
                 if(buffer_index >= 2) {
-                    if(buffer[buffer_index - 2] == ':') {
-                        buffer[buffer_index - 2] = '\0';
+                    if(buffer[buffer_index - 2] == ':') { // check if the last character is for labels (-2 because the null terminator also counts)
+                        buffer[buffer_index - 2] = '\0'; // if it is a label, terminate at the color
                         printf("New label: %s\n", buffer);
                         addLabel(buffer, offset);
                         buffer_index = 0;
@@ -417,7 +413,7 @@ int main(int argc, char* argv[])
                 switch(symbol)
                 {
                     case 0: // opcode mode
-                        opcode = instruction_encode(buffer);
+                        opcode = parse_instruction(buffer);
                         if(opcode == -1) {
                             printf("Invalid instruction on line %i: [%s]\n", line, buffer);
                             return -1;
@@ -453,10 +449,11 @@ int main(int argc, char* argv[])
                         offset ++;
                         SKIP:
                         break;
-                    
+
+                    case 1:  // expecing a register followed by a value
                     case 9:  // expecting 2 registers
                     case 10: // expecting a single register
-                        reg = register_encode(buffer);
+                        reg = parse_register(buffer);
                         if(reg == -1) {
                             printf("Invalid register on line %i: [%s]\n", line, buffer);
                             return -1;
@@ -466,7 +463,7 @@ int main(int argc, char* argv[])
                         buffer_index = 0;
                         offset ++; // register indices are byte-sized
 
-                        if(symbol == 9) {
+                        if(symbol == 9) { // if we are expecting 2 registers, then we pass control to the state which checks for specific register sizes
                             switch(reg) {
                                 case AL:
                                 case AH:
@@ -500,6 +497,40 @@ int main(int argc, char* argv[])
                                     break;
                             }
                         }
+                        else if(symbol == 1) { // if we are expecting the register followed by an integer, pass control to the state which reads the correct value sizes
+                            switch(reg) {
+                                case AL:
+                                case AH:
+                                case BL:
+                                case BH:
+                                case CL:
+                                case CH:
+                                case DL:
+                                case DH:
+                                    symbol = 6;
+                                    break;
+
+                                case AX:
+                                case BX:
+                                case CX:
+                                case DX:
+                                    symbol = 7;
+                                    break;
+
+                                case EAX:
+                                case EBX:
+                                case ECX:
+                                case EDX:
+                                case ESB:
+                                case ESP:
+                                case ESI:
+                                case EDI:
+                                case EIP:
+                                case FLG:
+                                    symbol = 8;
+                                    break;
+                            }
+                        }
                         else {
                             symbol = 0;
                             printf("\n");
@@ -509,7 +540,7 @@ int main(int argc, char* argv[])
                     case 11: // expecting an 8 bit register
                     case 12: // expecting a 16 bit register
                     case 13: // expecting a 32 bit register
-                        reg = register_encode(buffer);
+                        reg = parse_register(buffer);
                         if(reg == -1) {
                             printf("Invalid register on line %i: [%s]\n", line, buffer);
                             return -1;
@@ -527,52 +558,6 @@ int main(int argc, char* argv[])
                         offset ++;
                         break;
 
-                    case 1: // expecting a register followed by a value
-                        reg = register_encode(buffer);
-                        if(reg == -1) {
-                            printf("Invalid register on line %i: [%s]\n", line, buffer);
-                            return -1;
-                        }
-                        printf("r:%i ", reg);
-
-                        offset ++; // each register index is only a byte sized
-                        switch(reg) {
-                            case AL:
-                            case AH:
-                            case BL:
-                            case BH:
-                            case CL:
-                            case CH:
-                            case DL:
-                            case DH:
-                                symbol = 6;
-                                break;
-
-                            case AX:
-                            case BX:
-                            case CX:
-                            case DX:
-                                symbol = 7;
-                                break;
-
-                            case EAX:
-                            case EBX:
-                            case ECX:
-                            case EDX:
-                            case ESB:
-                            case ESP:
-                            case ESI:
-                            case EDI:
-                            case EIP:
-                            case FLG:
-                                symbol = 8;
-                                break;
-                        }
-
-                        addSymbol(&reg, 1);
-                        buffer_index = 0;
-                        break;
-
                     case 6: // expecting a byte
                         if(isLetter(buffer[0])) {
                             t_byte = 0;
@@ -580,16 +565,8 @@ int main(int argc, char* argv[])
                             addPostProcessor(buffer, offset, line, 1);
                             printf("b:[%s]\n", buffer);
                         }
-                        else if(buffer[0] == '\'') {
-                            t_byte = acsii_encode(buffer);
-                            if(t_byte == -1) {
-                                printf("Invalid expression [%s] on line [%i].\n", buffer, line);
-                                return -1;
-                            }
-                            printf("b:%i\n", t_byte);
-                        }
                         else {
-                            t_byte = byte_encode(buffer);
+                            t_byte = parse_value(buffer, line, PARSE_BYTE);
                             printf("b:%i\n", t_byte);
                         }
 
@@ -606,17 +583,9 @@ int main(int argc, char* argv[])
                             addPostProcessor(buffer, offset, line, 2);
                             printf("s:[%s]\n", buffer);
                         }
-                        else if(buffer[0] == '\'') {
-                            t_short = acsii_encode(buffer);
-                            if(t_short == -1) {
-                                printf("Invalid expression [%s] on line [%i].\n", buffer, line);
-                                return -1;
-                            }
-                            printf("s:%i\n", t_short);
-                        }
                         else {
+                            t_short = parse_value(buffer, line, PARSE_SHORT);
                             printf("s:%i\n", t_short);
-                            t_short = short_encode(buffer);
                         }
 
                         addSymbol(&t_short, 2);
@@ -624,7 +593,7 @@ int main(int argc, char* argv[])
                         buffer_index = 0;
                         symbol = 0;
                         break;
-                    
+
                     case 8: // expecting an integer
                         if(isLetter(buffer[0])) {
                             t_int = 0;
@@ -632,16 +601,8 @@ int main(int argc, char* argv[])
                             addPostProcessor(buffer, offset, line, 4);
                             printf("i:[%s]\n", buffer);
                         }
-                        else if(buffer[0] == '\'') {
-                            t_int = acsii_encode(buffer);
-                            if(t_int == -1) {
-                                printf("Invalid expression [%s] on line [%i].\n", buffer, line);
-                                return -1;
-                            }
-                            printf("i:%i\n", t_int);
-                        }
                         else {
-                            t_int = int_encode(buffer);
+                            t_int = parse_value(buffer, line, PARSE_INT);
                             printf("i:%i\n", t_int);
                         }
 
@@ -658,28 +619,28 @@ int main(int argc, char* argv[])
                 buffer[buffer_index] = '\0';
                 switch(symbol) {
                     case 2: // byte array reading mode
-                        t_byte = byte_encode(buffer);
+                        t_byte = parse_value(buffer, line, PARSE_BYTE);
                         printf(", %i", t_byte);
                         addSymbol(&t_byte, 1);
                         offset ++;
                         break;
 
                     case 3: // short array reading mode
-                        t_short = short_encode(buffer);
+                        t_short = parse_value(buffer, line, PARSE_SHORT);
                         printf(", %i", t_short);
                         addSymbol(&t_short, 2);
                         offset += 2;
                         break;
 
                     case 4: // integer array reading mode
-                        t_int = int_encode(buffer);
+                        t_int = parse_value(buffer, line, PARSE_INT);
                         printf(", %i", t_int);
                         addSymbol(&t_int, 4);
                         offset += 4;
                         break;
 
                     case 5: // float array reading mode
-                        t_float = float_encode(buffer);
+                        t_float = parse_value(buffer, line, PARSE_FLOAT);
                         printf(", %f", t_float);
                         addSymbol(&t_float, 4);
                         offset += 4;
@@ -764,4 +725,3 @@ int main(int argc, char* argv[])
     puts("Successful termination");
     return 0;
 }
-
