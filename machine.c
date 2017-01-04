@@ -11,7 +11,7 @@
 #define CONSOLE_HEIGHT 480
 
 // debug statement:
-//#define DEBUG_MODE
+// #define DEBUG_MODE
 
 #ifdef DEBUG_MODE
     #define dprintf(format, ...) printf((format), __VA_ARGS__);
@@ -671,9 +671,9 @@ int main()
                             return -1;
                         }
                         dprintf("%i vs %i\n", *REG8[v0 - REG8_OFFSET], *REG8[v1 - REG8_OFFSET]);
-                        v0 = *REG8[v0 - REG8_OFFSET] - *REG8[v1 - REG8_OFFSET];
-                        if(v0 == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
-                        else if(v0 < 0) REGISTERS[FLG].m32 |= LS_FLAG;
+                        i = *REG8[v0 - REG8_OFFSET] - *REG8[v1 - REG8_OFFSET];
+                        if(i == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
+                        else if(i < 0) REGISTERS[FLG].m32 |= LS_FLAG;
                         else REGISTERS[FLG].m32 |= GT_FLAG;
                         break;
 
@@ -686,9 +686,9 @@ int main()
                             return -1;
                         }
                         dprintf("%i vs %i\n", *REG16[v0 - REG16_OFFSET], *REG16[v1 - REG16_OFFSET]);
-                        v0 = *REG16[v0 - REG16_OFFSET] - *REG16[v1 - REG16_OFFSET];
-                        if(v0 == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
-                        else if(v0 < 0) REGISTERS[FLG].m32 |= LS_FLAG;
+                        i = *REG16[v0 - REG16_OFFSET] - *REG16[v1 - REG16_OFFSET];
+                        if(i == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
+                        else if(i < 0) REGISTERS[FLG].m32 |= LS_FLAG;
                         else REGISTERS[FLG].m32 |= GT_FLAG;
                         break;
 
@@ -704,14 +704,64 @@ int main()
                             return -1;
                         }
                         dprintf("%i vs %i\n", REGISTERS[v0].m32, REGISTERS[v1].m32);
-                        v0 = REGISTERS[(int) v0].m32 - REGISTERS[(int) v1].m32;
-                        if(v0 == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
-                        else if(v0 < 0) REGISTERS[FLG].m32 |= LS_FLAG;
+                        i = REGISTERS[(int) v0].m32 - REGISTERS[(int) v1].m32;
+                        if(i == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
+                        else if(i < 0) REGISTERS[FLG].m32 |= LS_FLAG;
                         else REGISTERS[FLG].m32 |= GT_FLAG;
                         break;
 
                     default:
                         printf("VM Crash: Bad cmp source register [%i].\n", v0);
+                        return -1;
+                }
+                break;
+
+            case CCMP:
+                v0 = read_b();
+                REGISTERS[FLG].m32 = 0;
+                dprintf("CCMP %i -> ", v0);
+                switch(v0) {
+                    case AL:
+                    case BL:
+                    case CL:
+                    case DL:
+                    case AH:
+                    case BH:
+                    case CH:
+                    case DH:
+                        i = REGISTERS[(int) v0].m32 - read_b();
+                        dprintf("%i\n", i);
+                        if(i == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
+                        else if(i < 0) REGISTERS[FLG].m32 |= LS_FLAG;
+                        else REGISTERS[FLG].m32 |= GT_FLAG;
+                        break;
+                    case AX:
+                    case BX:
+                    case CX:
+                    case DX:
+                        i = REGISTERS[(int) v0].m32 - read_s();
+                        dprintf("%i\n", i);
+                        if(i == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
+                        else if(i < 0) REGISTERS[FLG].m32 |= LS_FLAG;
+                        else REGISTERS[FLG].m32 |= GT_FLAG;
+                        break;
+                    case EAX:
+                    case EBX:
+                    case ECX:
+                    case EDX:
+                    case ESB:
+                    case ESP:
+                    case ESI:
+                    case EDI:
+                    case EIP:
+                        i = REGISTERS[(int) v0].m32 - read_i();
+                        dprintf("%i\n", i);
+                        if(i == 0) REGISTERS[FLG].m32 |= EQ_FLAG;
+                        else if(i < 0) REGISTERS[FLG].m32 |= LS_FLAG;
+                        else REGISTERS[FLG].m32 |= GT_FLAG;
+                        break;
+                    default:
+                        printf("VM Crash: Invalid register [%i].\n", v0);
                         return -1;
                 }
                 break;

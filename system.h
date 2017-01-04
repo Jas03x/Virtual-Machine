@@ -18,16 +18,17 @@
 #define DEC     6  // decrement
 #define SUB     7  // subtract
 #define CMP     8  // compare
-#define JMP     9  // jump
-#define JEQ    10  // jump if equal
-#define JLE    11  // jump if less than
-#define JGE    12  // jump if greater than
-#define PUSH   13  // push onto the stack
-#define POP    14  // pop the stack
-#define FETCH  15  // access at
-#define WRITE  16  // set at
-#define CALL   17  // call
-#define RET    18  // return to the last call's location
+#define CCMP    9  // compare register to a value
+#define JMP    10  // jump
+#define JEQ    11  // jump if equal
+#define JLE    12  // jump if less than
+#define JGE    13  // jump if greater than
+#define PUSH   14  // push onto the stack
+#define POP    15  // pop the stack
+#define FETCH  16  // access at
+#define WRITE  17  // set at
+#define CALL   18  // call
+#define RET    19  // return to the last call's location
 
 // Instruction opcode specifications:
 // NOP   - NA

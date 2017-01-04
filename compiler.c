@@ -49,6 +49,7 @@ int parse_instruction(char* str)
                 if(strcmp(str, "RET") == 0) return RET; else return -1;
         }
     }
+    else if(strcmp(str, "CCMP") == 0) return CCMP;
     else if(strcmp(str, "CALL") == 0) return CALL;
     else if(strcmp(str, "PUSH") == 0) return PUSH;
     else if(strcmp(str, "FETCH") == 0) return FETCH;
@@ -460,16 +461,6 @@ void read(const char* path)
                 if(buffer_index == 0)  { line++; break; } // empty string test
                 buffer[buffer_index++] = '\0'; // null terminate the string
 
-                /*if(buffer_index >= 2) {
-                    if(buffer[buffer_index - 2] == ':') { // check if the last character is for labels (-2 because the null terminator also counts)
-                        buffer[buffer_index - 2] = '\0'; // if it is a label, terminate at the color
-                        printf("New label: %s\n", buffer);
-                        addLabel(buffer, offset);
-                        buffer_index = 0;
-                        break;
-                    }
-                }*/
-
                 // check if this is an include statement
                 if(buffer[0] == '#') {
                     if(strcmp(buffer + 1, "include") == 0) {
@@ -513,6 +504,7 @@ void read(const char* path)
                             case WRITE: opcode = WRITE; printf("%i: WRITE ", offset); symbol = 10; break;
                             case RET:   opcode = RET;   printf("%i: RET\n",  offset); symbol = 0;  break;
                             case CALL:  opcode = CALL;  printf("%i: CALL ",  offset); symbol = 8;  break;
+                            case CCMP:  opcode = CCMP;  printf("%i: CCMP ",  offset); symbol = 1;  break;
                             default:
                                 printf("Unknown opcode [%s] on line %i.\n", buffer, line);
                                 exit(-1);
