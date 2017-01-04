@@ -273,6 +273,22 @@ void addLabel(char* str, int offset) {
     label_index ++;
 }
 
+// DEFINITIONS ARE ALSO LABELS
+void addDefinition(char* str, int line) {
+    char* spc = strchr(str, ' ');
+    if(!spc) {
+        printf("Invalid expression on line [%i]: [%s]\n", line, str);
+        exit(-1);
+    }
+    char* name = (char*) malloc(spc - str + 1);
+    if(!name) { puts("Memory allocation failure."); exit(-1); }
+    memcpy(name, str, spc-str);
+    name[spc-str] = '\0';
+    int i = parse_value(spc + 1, line, PARSE_INT, UNSIGNED);
+    addLabel(name, i);
+    free(name);
+}
+
 // add the code to the symbols array
 void addSymbol(void* ptr, int bytes) {
     while(symbol_index + bytes >= symbols_count) {
@@ -465,8 +481,10 @@ void read(const char* path)
                 if(buffer[0] == '#') {
                     if(strcmp(buffer + 1, "include") == 0) {
                         symbol = 14;
-                    } else if(strcmp(buffer + 1, "link")) {
+                    } else if(strcmp(buffer + 1, "link") == 0) {
                         symbol = 15;
+                    } else if(strcmp(buffer + 1, "def") == 0) {
+                        symbol = 16;
                     } else {
                         printf("Unknown directive [%s] on line [%i].\n", buffer, line);
                         exit(-1);
@@ -517,9 +535,20 @@ void read(const char* path)
 
                     case 14: // expecting the path to the source file to include
                         read(buffer);
+                        buffer_index = 0;
                         break;
                     case 15: // expecting the path to the source file to link to
                         link(buffer);
+                        buffer_index = 0;
+                        break;
+                    case 16: // expecting the define statement's name
+                        if(c == '\n') { // only read the expression on a new line
+                            addDefinition(buffer, line);
+                            buffer_index = 0;
+                        }
+                        else {
+                            buffer[buffer_index - 1] = ' '; // replace the terminator with a newline
+                        }
                         break;
 
                     case 1:  // expecing a register followed by a value

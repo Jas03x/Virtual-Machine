@@ -2,6 +2,9 @@
 vertices:
 <float>[320, 225, 320, 240, 320, 255]
 
+#def SIZEOF_VERTEX 8
+#def SIZEOF_COLOUR 3
+
 red:<byte>[255, 0, 0]
 blue:<byte>[0, 255, 0]
 green:<byte>[0, 0, 255]
@@ -27,8 +30,8 @@ MOV EDX 0
 loop:
     CALL draw
     CCMP EDX 3
-    INC EBX 3 ; color offset by 3
-    INC ECX 8 ; vertex offset by 8
+    INC EBX SIZEOF_COLOUR ; color offset by 3
+    INC ECX SIZEOF_VERTEX ; vertex offset by 8
     INC EDX 1
     JEQ break ; break the loop if we are done
     JMP loop ; otherwise loop
