@@ -124,9 +124,10 @@
 #define PRINT_INT  2
 #define PRINT_CHAR 3
 #define READ_DISK  4
-#define DRAW_PIXEL 5
+#define DRAW       5
 #define POLL       6
 #define REDRAW     7
+#define SET_COLOR  8
 
 // NOTE: This explains the read disk interrupt:
 // This interrupt will read the disk and push the data onto the stack

@@ -19,7 +19,7 @@
     #define dprintf(...)
 #endif
 
-static char* RAM;
+static unsigned char* RAM;
 
 #define L 0
 #define H 1
@@ -29,6 +29,7 @@ typedef union REG32
     char m8[2];
     short m16;
     int m32;
+    float f32;
 }REG32;
 
 static REG32 REGISTERS[REGISTER_COUNT];
@@ -85,10 +86,158 @@ static inline char read_b() { return RAM[REGISTERS[EIP].m32++]; }
 static inline int read_s(){ return RAM[REGISTERS[EIP].m32++] + (RAM[REGISTERS[EIP].m32++] << 8); }
 static inline int read_i(){ return RAM[REGISTERS[EIP].m32++] + (RAM[REGISTERS[EIP].m32++] << 8) + (RAM[REGISTERS[EIP].m32++] << 16) + (RAM[REGISTERS[EIP].m32++] << 24); }
 
+/*******************************************************************/
+/******************************* gpu *******************************/
+/*******************************************************************/
+
+#define GPU_MAX_VBO_SIZE 256
+
+GLuint GPU_DEFAULT_SHADER;
+GLint GPU_VERTEX_SOURCE;
+GLint GPU_COLOUR_SOURCE;
+GLint GPU_MATRIX_SOURCE;
+GLuint GPU_VBO, GPU_VAO;
+float GPU_RGB[3] = {0};
+float GPU_PROJECTION_MATRIX[16] = {
+    2.0f / ((float) CONSOLE_WIDTH), 0, 0, 0,
+    0, -2.0f / ((float) CONSOLE_HEIGHT), 0, 0,
+    0, 0, 1, 0,
+    -1, 1, 0, 1
+};
+
+void gpu_error_check() {
+    int error = 0;
+    switch(error) {
+        case 0: break;
+        default:
+            printf("GPU GL Error: %i\n", error);
+            break;
+    }
+}
+
+void gpu_init_shaders() {
+    GLuint shaders[2];
+    shaders[0] = glCreateShader(GL_VERTEX_SHADER);
+    shaders[1] = glCreateShader(GL_FRAGMENT_SHADER);
+    static const char* VERTEX_SHADER_SOURCE[] = {
+        "#version 330\n",
+        "in vec2 vertex;\n",
+        "uniform mat4 matrix;\n"
+        "void main() {\n",
+        "   gl_PointSize = 10.0f;\n"
+        "   gl_Position = matrix * vec4(vertex.x, vertex.y, 0, 1);\n",
+        "}\n"
+    };
+    static const char* FRAGMENT_SHADER_SOURCE[] = {
+        "#version 330\n",
+        "uniform vec3 colour;\n",
+        "out vec4 c_out;\n"
+        "void main() {\n",
+        "   c_out = vec4(colour, 1);\n",
+        "}\n"
+    };
+    glShaderSource(shaders[0], sizeof(VERTEX_SHADER_SOURCE) / sizeof(char*), VERTEX_SHADER_SOURCE, NULL);
+    glShaderSource(shaders[1], sizeof(FRAGMENT_SHADER_SOURCE) / sizeof(char*), FRAGMENT_SHADER_SOURCE, NULL);
+    glCompileShader(shaders[0]);
+    glCompileShader(shaders[1]);
+    unsigned int i = 0;
+    for(; i < 2; i++) {
+        GLint status = 0;
+        glGetShaderiv(shaders[i], GL_COMPILE_STATUS, &status);
+        if(status == GL_FALSE) {
+            int length = 0;
+            glGetShaderiv(shaders[i], GL_INFO_LOG_LENGTH, &length);
+            char* error = (char*) malloc(length);
+            if(!error){ puts("Memory allocation failure."); exit(-1); }
+            glGetShaderInfoLog(shaders[i], length, &length, error);
+            printf("Error: GPU %s shader error:\n%s\n", i == 0 ? "vertex" : "fragment", error);
+            free(error);
+            exit(-1);
+        }
+    }
+    GPU_DEFAULT_SHADER = glCreateProgram();
+    glAttachShader(GPU_DEFAULT_SHADER, shaders[0]);
+    glAttachShader(GPU_DEFAULT_SHADER, shaders[1]);
+    glLinkProgram(GPU_DEFAULT_SHADER);
+
+    GLint status = 0;
+    glGetProgramiv(GPU_DEFAULT_SHADER, GL_LINK_STATUS, &status);
+    if(status == GL_FALSE) {
+        int length = 0;
+        glGetProgramiv(GPU_DEFAULT_SHADER, GL_INFO_LOG_LENGTH, &length);
+        char* error = (char*) malloc(length);
+        if(!error){ puts("Memory allocation failure."); exit(-1); }
+        glGetShaderInfoLog(GPU_DEFAULT_SHADER, length, &length, error);
+        printf("Error: GPU program linking failure:\n%s\n", error);
+        free(error);
+        glDeleteShader(shaders[0]);
+        glDeleteShader(shaders[1]);
+        exit(-1);
+    }
+
+    glDetachShader(GPU_DEFAULT_SHADER, shaders[0]);
+    glDetachShader(GPU_DEFAULT_SHADER, shaders[1]);
+    glDeleteShader(shaders[0]);
+    glDeleteShader(shaders[1]);
+    gpu_error_check();
+}
+
+void gpu_init() {
+    glGenBuffers(1, &GPU_VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, GPU_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * GPU_MAX_VBO_SIZE, NULL, GL_STREAM_DRAW);
+
+    glGenVertexArrays(1, &GPU_VAO);
+    glBindVertexArray(GPU_VAO);
+
+    gpu_init_shaders();
+    GPU_VERTEX_SOURCE = glGetAttribLocation(GPU_DEFAULT_SHADER,  "vertex");
+    GPU_COLOUR_SOURCE = glGetUniformLocation(GPU_DEFAULT_SHADER, "colour");
+    GPU_MATRIX_SOURCE = glGetUniformLocation(GPU_DEFAULT_SHADER, "matrix");
+    if(GPU_VERTEX_SOURCE == -1 || GPU_COLOUR_SOURCE == -1 || GPU_MATRIX_SOURCE == -1) {
+        puts("Error: GPU source(s) not found in default shader.");
+        exit(-1);
+    }
+    glUseProgram(GPU_DEFAULT_SHADER);
+    glBindBuffer(GL_ARRAY_BUFFER, GPU_VBO);
+    glEnableVertexAttribArray(GPU_VERTEX_SOURCE);
+    glVertexAttribPointer(GPU_VERTEX_SOURCE, 2, GL_FLOAT, GL_FALSE, 0, (void*) 0);
+    glUniformMatrix4fv(GPU_MATRIX_SOURCE, 1, GL_FALSE, GPU_PROJECTION_MATRIX);
+    glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+    gpu_error_check();
+}
+
+void gpu_draw(void* data, unsigned int count) {
+    printf("DRAW %i\n", count);
+    printf("Coordinates: %f %f\n", *((float*) data), *(((float*) data) + 1));
+    printf("%f %f\n", *(((float*) data) + 2), *(((float*) data) + 3));
+    printf("%f %f\n", *(((float*) data) + 4), *(((float*) data) + 5));
+    if(count > GPU_MAX_VBO_SIZE) {
+        puts("Error: Elements to draw exceeds maximum gpu limit.");
+        exit(-1);
+    }
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * GPU_MAX_VBO_SIZE, NULL, GL_STREAM_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * count, data);
+    glUniform3fv(GPU_COLOUR_SOURCE, 1, GPU_RGB);
+    glDrawArrays(GL_POINTS, 0, count);
+    gpu_error_check();
+}
+
+void gpu_free() {
+    if(glIsBuffer(GPU_VBO) == GL_TRUE) glDeleteBuffers(1, &GPU_VBO);
+    if(glIsVertexArray(GPU_VAO) == GL_TRUE) glDeleteVertexArrays(1, &GPU_VAO);
+    if(glIsProgram(GPU_DEFAULT_SHADER) == GL_TRUE) glDeleteProgram(GPU_DEFAULT_SHADER);
+    gpu_error_check();
+}
+
+/*******************************************************************/
+/******************************* gpu *******************************/
+/*******************************************************************/
+
 int main()
 {
     // allocate the heap
-    RAM = (char*) malloc(RAM_SIZE);
+    RAM = (unsigned char*) malloc(RAM_SIZE);
     if(!RAM) return -1;
     memset(RAM, 0, RAM_SIZE); // 0 - initalize the memory
 
@@ -124,9 +273,11 @@ int main()
         return -1;
     }
 
+    gpu_init();
+
     int RUNNING = 1; // runing boolean
     int i; // a temporary use integer
-    char OP, v0, v1; // temporary use characters
+    unsigned char OP, v0, v1; // temporary use characters
     SDL_Event event;
 
     while(RUNNING)
@@ -190,6 +341,18 @@ int main()
 
                     case REDRAW:
                         SDL_GL_SwapWindow(window);
+                        break;
+
+                    case SET_COLOR:
+                        printf("first number = %i\n", RAM[REGISTERS[ESI].m32]);
+                        GPU_RGB[0] = RAM[REGISTERS[ESI].m32] / 255.0f;
+                        GPU_RGB[1] = RAM[REGISTERS[ESI].m32+1] / 255.0f;
+                        GPU_RGB[2] = RAM[REGISTERS[ESI].m32+2] / 255.0f;
+                        printf("New color = %f %f %f\n", GPU_RGB[0], GPU_RGB[1], GPU_RGB[2]);
+                        break;
+
+                    case DRAW:
+                        gpu_draw(&RAM[REGISTERS[ESI].m32], REGISTERS[EAX].m32);
                         break;
 
                     default:
@@ -754,6 +917,7 @@ int main()
     SDL_Quit();
 
     free(RAM);
+    gpu_free();
 
     return 0;
 }

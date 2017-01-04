@@ -109,7 +109,35 @@ int parse_register(char* str)
 #define PARSE_SHORT 1
 #define PARSE_INT   2
 #define PARSE_FLOAT 3
-int parse_value(char* str, int line, int mode) {
+// sign = value signed/unsigned
+#define SIGNED   0
+#define UNSIGNED 1
+// helper function to check if the integer is within the range
+// NOTE: BY DEFAULT WE HAVE SET ALL THE VALUES TO BE UNSIGNED! MEANING NO NEGATIVE VALUES ARE ALLOWED RIGHT NOW!
+int sign_check(int i, int mode, int sign){
+    switch(sign) {
+        case SIGNED:
+            switch(mode) {
+                case PARSE_BYTE: if(i >= SCHAR_MIN && i <= SCHAR_MAX) return 1; else return 0;
+                case PARSE_SHORT: if(i >= SHRT_MIN && i <= SHRT_MAX) return 1; else return 0;
+                case PARSE_INT: return 1;
+                case PARSE_FLOAT: return 1;
+                default: return 0;
+            }
+        case UNSIGNED:
+            switch(mode) {
+                case PARSE_BYTE: if(i >= 0 && i <= UCHAR_MAX) return 1; else return 0;
+                case PARSE_SHORT: if(i >= 0 && i <= USHRT_MAX) return 1; else return 0;
+                case PARSE_INT: if(i >= 0) return 1; else return 0;
+                default: return 0;
+            }
+        default:
+            return 0;
+    }
+    return 0;
+}
+// the actual parse function:
+int parse_value(char* str, int line, int mode, int sign) {
     if(str[0] == '\'') { // if it begins with a quote, then we parse as a byte
         if(str[1] == '\\') {
             if(str[3] != '\'') { printf("Unexpecting value [%s] on line [%i].\n", str, line); exit(-1); }
@@ -140,24 +168,18 @@ int parse_value(char* str, int line, int mode) {
         else if(mode == PARSE_FLOAT) return atof(str);
         else {
             i = atoi(str);
-
-            switch(mode) {
-                case PARSE_BYTE:
-                    if(i < SCHAR_MIN || i > SCHAR_MAX ){
-                        printf("Error: Expected byte [%s] on line [%i] exceeds byte limit.\n", str, line);
-                        exit(-1);
-                    }
-                    return i;
-                case PARSE_SHORT:
-                    if(i < SHRT_MIN || i > SHRT_MAX) {
-                        printf("Error: Expected short [%s] on line [%i] exceeds short limit.\n", str, line);
-                        exit(-1);
-                    }
-                    return i;
-                default:
-                    puts("Undefined mode paramter in value encode.");
-                    exit(-1);
+            if(sign_check(i, mode, sign) != 1) {
+                printf("Error: Expected value [%i] exceeds ", i);
+                switch(mode) {
+                    case PARSE_BYTE: printf("%sbyte.\n", sign == SIGNED ? "signed" : "unsigned"); break;
+                    case PARSE_SHORT: printf("%s short.\n", sign == SIGNED ? "signed" : "unsigned"); break;
+                    case PARSE_INT: printf("%s int.\n", sign == SIGNED ? "signed" : "unsigned"); break;
+                    case PARSE_FLOAT: printf("%s float.\n", sign == SIGNED ? "signed" : "unsigned"); break;
+                    default: printf("[unknown data type error].\n"); break;
+                }
+                exit(-1);
             }
+            return i;
         }
     }
     return 0;
@@ -321,10 +343,10 @@ int main(int argc, char* argv[])
         return -1;
     }
     Label* code_start = findLabel("_CODE_");
-    int start = 0;
+    unsigned int start = 0;
     if(code_start == NULL) start = 0; else start = code_start->offset;
     printf("Code start: %i\n", start);
-    fwrite(&start, sizeof(int), 1, output);
+    fwrite(&start, sizeof(unsigned int), 1, output);
 
     // write the code symbols
     printf("Writing [%i] symbols.\n", symbol_index);
@@ -356,9 +378,9 @@ void read(const char* path)
     unsigned int buffer_index = 0; // the index of the next character to be inserted
 
     // temporary data types used for writing
-    char t_byte = 0;
-    short t_short = 0;
-    int t_int = 0;
+    unsigned char t_byte = 0;
+    unsigned short t_short = 0;
+    unsigned int t_int = 0;
     float t_float = 0;
 
     while(1)
@@ -421,6 +443,13 @@ void read(const char* path)
                 buffer_index = 0;
                 break;
 
+            case ':':
+                buffer[buffer_index] = '\0'; // if it is a label, terminate at the color
+                printf("New label: %s\n", buffer);
+                addLabel(buffer, offset);
+                buffer_index = 0;
+                break;
+
             case ';':
                 buffer[buffer_index] = '\0';
                 while(fgetc(input) != '\n' && feof(input) == 0) {} // skip the comment line
@@ -431,7 +460,7 @@ void read(const char* path)
                 if(buffer_index == 0)  { line++; break; } // empty string test
                 buffer[buffer_index++] = '\0'; // null terminate the string
 
-                if(buffer_index >= 2) {
+                /*if(buffer_index >= 2) {
                     if(buffer[buffer_index - 2] == ':') { // check if the last character is for labels (-2 because the null terminator also counts)
                         buffer[buffer_index - 2] = '\0'; // if it is a label, terminate at the color
                         printf("New label: %s\n", buffer);
@@ -439,7 +468,7 @@ void read(const char* path)
                         buffer_index = 0;
                         break;
                     }
-                }
+                }*/
 
                 // check if this is an include statement
                 if(buffer[0] == '#') {
@@ -617,7 +646,7 @@ void read(const char* path)
                             printf("b:[%s]\n", buffer);
                         }
                         else {
-                            t_byte = parse_value(buffer, line, PARSE_BYTE);
+                            t_byte = parse_value(buffer, line, PARSE_BYTE, UNSIGNED);
                             printf("b:%i\n", t_byte);
                         }
 
@@ -635,7 +664,7 @@ void read(const char* path)
                             printf("s:[%s]\n", buffer);
                         }
                         else {
-                            t_short = parse_value(buffer, line, PARSE_SHORT);
+                            t_short = parse_value(buffer, line, PARSE_SHORT, UNSIGNED);
                             printf("s:%i\n", t_short);
                         }
 
@@ -653,7 +682,7 @@ void read(const char* path)
                             printf("i:[%s]\n", buffer);
                         }
                         else {
-                            t_int = parse_value(buffer, line, PARSE_INT);
+                            t_int = parse_value(buffer, line, PARSE_INT, UNSIGNED);
                             printf("i:%i\n", t_int);
                         }
 
@@ -670,29 +699,29 @@ void read(const char* path)
                 buffer[buffer_index] = '\0';
                 switch(symbol) {
                     case 2: // byte array reading mode
-                        t_byte = parse_value(buffer, line, PARSE_BYTE);
+                        t_byte = parse_value(buffer, line, PARSE_BYTE, UNSIGNED);
                         printf(", %i", t_byte);
                         addSymbol(&t_byte, 1);
                         offset ++;
                         break;
 
                     case 3: // short array reading mode
-                        t_short = parse_value(buffer, line, PARSE_SHORT);
+                        t_short = parse_value(buffer, line, PARSE_SHORT, UNSIGNED);
                         printf(", %i", t_short);
                         addSymbol(&t_short, 2);
                         offset += 2;
                         break;
 
                     case 4: // integer array reading mode
-                        t_int = parse_value(buffer, line, PARSE_INT);
+                        t_int = parse_value(buffer, line, PARSE_INT, UNSIGNED);
                         printf(", %i", t_int);
                         addSymbol(&t_int, 4);
                         offset += 4;
                         break;
 
                     case 5: // float array reading mode
-                        t_float = parse_value(buffer, line, PARSE_FLOAT);
-                        printf(", %f", t_float);
+                        t_float = parse_value(buffer, line, PARSE_FLOAT, UNSIGNED);
+                        printf(", %ff", t_float);
                         addSymbol(&t_float, 4);
                         offset += 4;
                         break;
