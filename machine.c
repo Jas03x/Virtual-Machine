@@ -217,7 +217,7 @@ void gpu_draw(void* data, unsigned int count) {
         exit(-1);
     }
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * GPU_MAX_VBO_SIZE, NULL, GL_STREAM_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * count, data);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * count * 2, data);
     glUniform3fv(GPU_COLOUR_SOURCE, 1, GPU_RGB);
     glDrawArrays(GL_POINTS, 0, count);
     gpu_error_check();
