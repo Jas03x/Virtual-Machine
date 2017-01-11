@@ -23,12 +23,13 @@
 #define JEQ    11  // jump if equal
 #define JLE    12  // jump if less than
 #define JGE    13  // jump if greater than
-#define PUSH   14  // push onto the stack
-#define POP    15  // pop the stack
-#define FETCH  16  // access at
-#define WRITE  17  // set at
-#define CALL   18  // call
-#define RET    19  // return to the last call's location
+#define JNE    14
+#define PUSH   15  // push onto the stack
+#define POP    16  // pop the stack
+#define FETCH  17  // access at
+#define WRITE  18  // set at
+#define CALL   19  // call
+#define RET    20  // return to the last call's location
 
 // Instruction opcode specifications:
 // NOP   - NA

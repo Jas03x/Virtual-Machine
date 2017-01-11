@@ -652,6 +652,12 @@ int main()
                 if(REGISTERS[FLG].m32 & LS_FLAG) REGISTERS[EIP].m32 = i;
                 break;
 
+            case JNE:
+                i = read_i();
+                dprintf("JNE %i\n", i);
+                if(!(REGISTERS[FLG].m32 & EQ_FLAG)) REGISTERS[EIP].m32 = i;
+                break;
+
             case CMP:
                 v0 = read_b();
                 v1 = read_b();

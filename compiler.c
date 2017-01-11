@@ -42,6 +42,7 @@ int parse_instruction(char* str)
                 else if(strcmp(str, "JEQ") == 0) return JEQ;
                 else if(strcmp(str, "JGE") == 0) return JGE;
                 else if(strcmp(str, "JLE") == 0) return JLE;
+                else if(strcmp(str, "JNE") == 0) return JNE;
                 else return -1;
             case 'P':
                 if(strcmp(str, "POP") == 0) return POP; else return -1;
@@ -516,6 +517,7 @@ void read(const char* path)
                             case JEQ:   opcode = JEQ;   printf("%i: JEQ ",   offset); symbol = 8;  break;
                             case JLE:   opcode = JLE;   printf("%i: JLE ",   offset); symbol = 8;  break;
                             case JGE:   opcode = JGE;   printf("%i: JGE ",   offset); symbol = 8;  break;
+                            case JNE:   opcode = JNE;   printf("%i: JNE ",   offset); symbol = 8;  break;
                             case PUSH:  opcode = PUSH;  printf("%i: PUSH ",  offset); symbol = 10; break;
                             case POP:   opcode = POP;   printf("%i: POP ",   offset); symbol = 10; break;
                             case FETCH: opcode = FETCH; printf("%i: FETCH ", offset); symbol = 10; break;
